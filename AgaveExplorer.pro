@@ -61,7 +61,9 @@ SOURCES += main.cpp \
     utilFuncs/agavesetupdriver.cpp \
     utilFuncs/authform.cpp \
     utilFuncs/copyrightdialog.cpp \
-    utilFuncs/singlelinedialog.cpp
+    utilFuncs/singlelinedialog.cpp \
+    remoteFileOps/remotejobentry.cpp \
+    remoteFileOps/selectedfilelabel.cpp
     main.cpp
 
 # The following define makes your compiler emit warnings if you use
@@ -95,7 +97,9 @@ HEADERS += \
     utilFuncs/agavesetupdriver.h \
     utilFuncs/authform.h \
     utilFuncs/copyrightdialog.h \
-    utilFuncs/singlelinedialog.h
+    utilFuncs/singlelinedialog.h \
+    remoteFileOps/remotejobentry.h \
+    remoteFileOps/selectedfilelabel.h
 
 FORMS += \
     instances/explorerwindow.ui \

@@ -33,59 +33,59 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#include <QApplication>
-#include <QObject>
-#include <QtGlobal>
-#include <QFile>
+#include "remotejobentry.h"
 
-#include <QSslSocket>
+#include "../AgaveClientInterface/remotejobdata.h"
 
-#include "instances/explorerwindow.h"
-#include "instances/explorerdriver.h"
-
-void emptyMessageHandler(QtMsgType, const QMessageLogContext &, const QString &){}
-
-int main(int argc, char *argv[])
+RemoteJobEntry::RemoteJobEntry(RemoteJobData newData, QStandardItem * modelParent, QObject *parent) : QObject(parent)
 {
-    QApplication mainRunLoop(argc, argv);
-    bool debugLoggingEnabled = false;
-    for (int i = 0; i < argc; i++)
-    {
-        if (strcmp(argv[i],"enableDebugLogging") == 0)
-        {
-            debugLoggingEnabled = true;
-        }
-    }
+    modelParentNode = modelParent;
+    setData(newData);
+}
 
-    if (debugLoggingEnabled)
+void RemoteJobEntry::setData(RemoteJobData newData)
+{
+    bool signalChange = false;
+    if ((newData.getState() != myData.getState()) && (myData.getState() != "APP_INIT"))
     {
-        qDebug("NOTE: Debugging text output is enabled.");
+        signalChange = true;
+    }
+    myData = newData;
+
+    if (myModelNode == NULL)
+    {
+        QList<QStandardItem *> newRow;
+        myModelNode = new QStandardItem(myData.getName());
+        newRow.append(myModelNode);
+        newRow.append(new QStandardItem(myData.getState()));
+        newRow.append(new QStandardItem(myData.getApp()));
+        newRow.append(new QStandardItem(myData.getTimeCreated().toString()));
+        newRow.append(new QStandardItem(myData.getID()));
+        modelParentNode->insertRow(0,newRow);
     }
     else
     {
-        qInstallMessageHandler(emptyMessageHandler);
+        int rowNum = myModelNode->row();
+
+        modelParentNode->child(rowNum,0)->setText(myData.getName());
+        modelParentNode->child(rowNum,1)->setText(myData.getState());
+        modelParentNode->child(rowNum,2)->setText(myData.getApp());
+        modelParentNode->child(rowNum,3)->setText(myData.getTimeCreated().toString());
+        modelParentNode->child(rowNum,4)->setText(myData.getID());
     }
 
-
-    ExplorerDriver programDriver(NULL, debugLoggingEnabled);
-
-    QFile simCenterStyle(":/styleCommon/style.qss");
-    if (!simCenterStyle.open(QFile::ReadOnly))
+    if (signalChange)
     {
-        programDriver.fatalInterfaceError("Missing file for graphics style. Your install is probably corrupted.");
+        emit jobStateChanged(&myData);
     }
-    QString commonStyle = QLatin1String(simCenterStyle.readAll());
+}
 
-    mainRunLoop.setQuitOnLastWindowClosed(false);
-    //Note: Window closeing must link to the shutdown sequence, otherwise the app will not close
-    //Note: Might consider a better way of implementing this.
+RemoteJobData RemoteJobEntry::getData()
+{
+    return myData;
+}
 
-    if (QSslSocket::supportsSsl() == false)
-    {
-        programDriver.fatalInterfaceError("SSL support was not detected on this computer.\nPlease insure that some version of SSL is installed,\n such as by installing OpenSSL.\nInstalling a web browser will probably also work.");
-    }
-
-    programDriver.startup();
-    mainRunLoop.setStyleSheet(commonStyle);
-    return mainRunLoop.exec();
+void RemoteJobEntry::setDetails(QMap<QString, QString> inputs, QMap<QString, QString> params)
+{
+    myData.setDetails(inputs, params);
 }

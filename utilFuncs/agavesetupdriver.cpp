@@ -41,7 +41,10 @@
 
 #include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
 
-AgaveSetupDriver::AgaveSetupDriver(QObject *parent) : QObject(parent) {}
+AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent)
+{
+    debugMode = debug;
+}
 
 AgaveSetupDriver::~AgaveSetupDriver()
 {
@@ -64,6 +67,11 @@ JobOperator * AgaveSetupDriver::getJobHandler()
 FileOperator * AgaveSetupDriver::getFileHandler()
 {
     return myFileHandle;
+}
+
+bool AgaveSetupDriver::inDebugMode()
+{
+    return debugMode;
 }
 
 void AgaveSetupDriver::getAuthReply(RequestState authReply)

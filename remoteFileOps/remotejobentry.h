@@ -33,59 +33,31 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#include <QApplication>
+#ifndef REMOTEJOBENTRY_H
+#define REMOTEJOBENTRY_H
+
 #include <QObject>
-#include <QtGlobal>
-#include <QFile>
+#include <QStandardItem>
 
-#include <QSslSocket>
+#include "../AgaveClientInterface/remotejobdata.h"
 
-#include "instances/explorerwindow.h"
-#include "instances/explorerdriver.h"
-
-void emptyMessageHandler(QtMsgType, const QMessageLogContext &, const QString &){}
-
-int main(int argc, char *argv[])
+class RemoteJobEntry : public QObject
 {
-    QApplication mainRunLoop(argc, argv);
-    bool debugLoggingEnabled = false;
-    for (int i = 0; i < argc; i++)
-    {
-        if (strcmp(argv[i],"enableDebugLogging") == 0)
-        {
-            debugLoggingEnabled = true;
-        }
-    }
+    Q_OBJECT
+public:
+    explicit RemoteJobEntry(RemoteJobData newData, QStandardItem * modelParent, QObject *parent = nullptr);
 
-    if (debugLoggingEnabled)
-    {
-        qDebug("NOTE: Debugging text output is enabled.");
-    }
-    else
-    {
-        qInstallMessageHandler(emptyMessageHandler);
-    }
+    void setData(RemoteJobData newData);
+    RemoteJobData getData();
+    void setDetails(QMap<QString, QString> inputs, QMap<QString, QString> params);
 
+signals:
+    void jobStateChanged(RemoteJobData * jobData);
 
-    ExplorerDriver programDriver(NULL, debugLoggingEnabled);
+private:
+    QStandardItem * modelParentNode = NULL;
+    QStandardItem * myModelNode = NULL;
+    RemoteJobData myData;
+};
 
-    QFile simCenterStyle(":/styleCommon/style.qss");
-    if (!simCenterStyle.open(QFile::ReadOnly))
-    {
-        programDriver.fatalInterfaceError("Missing file for graphics style. Your install is probably corrupted.");
-    }
-    QString commonStyle = QLatin1String(simCenterStyle.readAll());
-
-    mainRunLoop.setQuitOnLastWindowClosed(false);
-    //Note: Window closeing must link to the shutdown sequence, otherwise the app will not close
-    //Note: Might consider a better way of implementing this.
-
-    if (QSslSocket::supportsSsl() == false)
-    {
-        programDriver.fatalInterfaceError("SSL support was not detected on this computer.\nPlease insure that some version of SSL is installed,\n such as by installing OpenSSL.\nInstalling a web browser will probably also work.");
-    }
-
-    programDriver.startup();
-    mainRunLoop.setStyleSheet(commonStyle);
-    return mainRunLoop.exec();
-}
+#endif // REMOTEJOBENTRY_H

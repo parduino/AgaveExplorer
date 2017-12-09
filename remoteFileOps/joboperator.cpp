@@ -39,6 +39,7 @@
 #include "remotejoblister.h"
 #include "../AgaveClientInterface/remotedatainterface.h"
 #include "../AgaveClientInterface/remotejobdata.h"
+#include "remotejobentry.h"
 
 JobOperator::JobOperator(RemoteDataInterface * newDataLink, QObject * parent) : QObject((QObject *)parent)
 {
@@ -48,9 +49,51 @@ JobOperator::JobOperator(RemoteDataInterface * newDataLink, QObject * parent) : 
 void JobOperator::linkToJobLister(RemoteJobLister * newLister)
 {
     newLister->setModel(&theJobList);
+    theJobList.setHorizontalHeaderLabels({"Task Name", "State", "Agave App", "Time Created", "Agave ID"});
 }
 
 void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJobData> * theData)
+{
+    if (QObject::sender() == currentJobReply)
+    {
+        //Note: RemoteDataReply destroys itself after signal
+        currentJobReply = NULL;
+    }
+    if (replyState != RequestState::GOOD)
+    {
+        //TODO: some error here
+        return;
+    }
+
+    bool notDone = false;
+
+    for (auto itr = theData->rbegin(); itr != theData->rend(); itr++)
+    {
+        if (jobData.contains((*itr).getID()))
+        {
+            RemoteJobEntry * theItem = jobData.value((*itr).getID());
+            theItem->setData(*itr);
+        }
+        else
+        {
+            RemoteJobEntry * theItem = new RemoteJobEntry(*itr, theJobList.invisibleRootItem(), this);
+            jobData.insert(theItem->getData().getID(), theItem);
+        }
+        if (!notDone && ((*itr).getState() != "FINISHED") && ((*itr).getState() != "FAILED"))
+        {
+            notDone = true;
+        }
+    }
+
+    emit newJobData();
+
+    if (notDone)
+    {
+        QTimer::singleShot(5000, this, SLOT(demandJobDataRefresh()));
+    }
+}
+
+void JobOperator::refreshRunningJobDetails(RequestState replyState, RemoteJobData *theData)
 {
     if (replyState != RequestState::GOOD)
     {
@@ -58,34 +101,45 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
         return;
     }
 
-    //TODO: Subsequent versions should update rather than wholesale re-write
-
-    rawData.clear(); //TODO: make sure no memory leak here
-    for (auto itr = theData->begin(); itr != theData->end(); itr++)
+    if (jobData.contains(theData->getID()))
     {
-        RemoteJobData * newItem = new RemoteJobData();
-        (*newItem) = (*itr);
-        rawData.append(newItem);
+        RemoteJobEntry * theItem = jobData.value(theData->getID());
+        theItem->setDetails(theData->getInputs(), theData->getParams());
+    }
+}
+
+QMap<QString, RemoteJobData> JobOperator::getRunningJobs()
+{
+    QMap<QString, RemoteJobData> ret;
+
+    for (auto itr = jobData.cbegin(); itr != jobData.cend(); itr++)
+    {
+        QString myState = (*itr)->getData().getState();
+        if (!myState.isEmpty() && (myState != "FINISHED") && (myState != "FAILED"))
+        {
+            ret.insert((*itr)->getData().getID(), (*itr)->getData());
+        }
     }
 
-    theJobList.clear(); //TODO: make sure no memory leak here
-    theJobList.setHorizontalHeaderLabels({"Task Name", "State", "Agave App", "Time Created", "Agave ID"});
+    return ret;
+}
 
-    for (auto itr = rawData.begin(); itr != rawData.end(); itr++)
-    {
-        QList<QStandardItem *> newRow;
-        newRow.append(new QStandardItem((*itr)->getName()));
-        newRow.append(new QStandardItem((*itr)->getState()));
-        newRow.append(new QStandardItem((*itr)->getApp()));
-        newRow.append(new QStandardItem((*itr)->getTimeCreated().toString()));
-        newRow.append(new QStandardItem((*itr)->getID()));
-        theJobList.appendRow(newRow);
-    }
+void JobOperator::requestJobDetails(RemoteJobData *toFetch)
+{
+    if (toFetch->detailsLoaded()) return;
+
+    RemoteDataReply * jobReply = dataLink->getJobDetails(toFetch->getID());
+    QObject::connect(jobReply, SIGNAL(haveJobDetails(RequestState,RemoteJobData*)),
+                     this, SLOT(refreshRunningJobDetails(RequestState,RemoteJobData*)));
 }
 
 void JobOperator::demandJobDataRefresh()
 {
-    RemoteDataReply * listReply = dataLink->getListOfJobs();
-    QObject::connect(listReply, SIGNAL(haveJobList(RequestState,QList<RemoteJobData>*)),
+    if (currentJobReply != NULL)
+    {
+        return;
+    }
+    currentJobReply = dataLink->getListOfJobs();
+    QObject::connect(currentJobReply, SIGNAL(haveJobList(RequestState,QList<RemoteJobData>*)),
                      this, SLOT(refreshRunningJobList(RequestState,QList<RemoteJobData>*)));
 }

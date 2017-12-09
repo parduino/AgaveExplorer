@@ -41,16 +41,20 @@
 #include "remoteFileOps/joboperator.h"
 
 #include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
+#include "../AgaveClientInterface/agaveInterfaces/agavetaskreply.h"
 
-ExplorerDriver::ExplorerDriver(QObject *parent) : AgaveSetupDriver(parent)
+ExplorerDriver::ExplorerDriver(QObject *parent, bool debug) : AgaveSetupDriver(parent, debug)
 {
     AgaveHandler * tmpHandle = new AgaveHandler(this);
     tmpHandle->registerAgaveAppInfo("compress", "compress-0.1u1",{"directory", "compression_type"},{},"directory");
     tmpHandle->registerAgaveAppInfo("extract", "extract-0.1u1",{"inputFile"},{},"");
     tmpHandle->registerAgaveAppInfo("openfoam","openfoam-2.4.0u11",{"solver"},{"inputDirectory"},"inputDirectory");
 
-    theConnector = (RemoteDataInterface *) tmpHandle;
+    tmpHandle->registerAgaveAppInfo("cwe-mesh", "cwe-mesh-0.1.0", {"directory"}, {}, "directory");
+    tmpHandle->registerAgaveAppInfo("cwe-sim", "cwe-sim-2.4.0", {}, {"directory"}, "directory");
+    tmpHandle->registerAgaveAppInfo("cwe-post", "cwe-post-0.1.0", {"directory"}, {}, "directory");
 
+    theConnector = (RemoteDataInterface *) tmpHandle;
     QObject::connect(theConnector, SIGNAL(sendFatalErrorMessage(QString)), this, SLOT(fatalInterfaceError(QString)));
 }
 
@@ -93,6 +97,11 @@ void ExplorerDriver::closeAuthScreen()
         authWindow->deleteLater();
         authWindow = NULL;
     }
+
+    AgaveHandler * tmpHandle = (AgaveHandler *) theConnector;
+    AgaveTaskReply * agaveList = tmpHandle->getAgaveAppList();
+
+    QObject::connect(agaveList, SIGNAL(haveAgaveAppList(RequestState,QJsonArray*)), this, SLOT(loadAppList(RequestState,QJsonArray*)));
 }
 
 void ExplorerDriver::startOffline()
@@ -109,4 +118,23 @@ QString ExplorerDriver::getBanner()
 QString ExplorerDriver::getVersion()
 {
     return "Version: 0.1";
+}
+
+void ExplorerDriver::loadAppList(RequestState replyState, QJsonArray * appList)
+{
+    if (replyState != RequestState::GOOD)
+    {
+        qDebug("App List not available.");
+        return;
+    }
+
+    for (auto itr = appList->constBegin(); itr != appList->constEnd(); itr++)
+    {
+        QString appName = (*itr).toObject().value("name").toString();
+
+        if (!appName.isEmpty())
+        {
+            mainWindow->addAppToList(appName);
+        }
+    }
 }

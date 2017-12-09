@@ -56,7 +56,7 @@ class AgaveSetupDriver : public QObject
 {
     Q_OBJECT
 public:
-    explicit AgaveSetupDriver(QObject *parent = nullptr);
+    explicit AgaveSetupDriver(QObject *parent = nullptr, bool debug = false);
     ~AgaveSetupDriver();
     virtual void startup() = 0;
 
@@ -70,6 +70,7 @@ public:
 
     virtual QString getBanner() = 0;
     virtual QString getVersion() = 0;
+    bool inDebugMode();
 
 private slots:
     void getAuthReply(RequestState authReply);
@@ -87,6 +88,8 @@ protected:
     FileOperator * myFileHandle = NULL;
 
     bool doingShutdown = false;
+
+    bool debugMode = false;
 
 signals:
 

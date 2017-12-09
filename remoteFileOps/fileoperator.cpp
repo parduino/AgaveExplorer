@@ -51,13 +51,13 @@ FileOperator::FileOperator(RemoteDataInterface * newDataLink, AgaveSetupDriver *
 
     //Note: will be deconstructed with parent
     fileOpPending = new EasyBoolLock(this);
-    QObject::connect(fileOpPending, SIGNAL(lockStateChanged(bool)),
-                     this, SLOT(opLockChanged(bool)));
 }
 
 void FileOperator::linkToFileTree(RemoteFileTree * newTreeLink)
 {
     newTreeLink->setModel(&dataStore);
+    QObject::connect(&dataStore, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)),
+                     newTreeLink, SLOT(fileEntryTouched(QModelIndex)));
 }
 
 void FileOperator::resetFileData()
@@ -70,10 +70,12 @@ void FileOperator::resetFileData()
     {
         rootFileNode->deleteLater();
     }
-    rootFileNode = new FileTreeNode();
-    translateFileDataToModel();
+    rootFileNode = new FileTreeNode(NULL, dataStore.invisibleRootItem());
 
-    enactFolderRefresh(rootFileNode);
+    QObject::connect(rootFileNode, SIGNAL(fileSystemChanged()),
+                     this, SLOT(fileNodesChange()));
+
+    enactRootRefresh();
 }
 
 void FileOperator::totalResetErrorProcedure()
@@ -100,8 +102,27 @@ QString FileOperator::getStringFromInitParams(QString stringKey)
     return ret;
 }
 
-void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode)
+void FileOperator::enactRootRefresh()
 {
+    qDebug("Enacting refresh of root.");
+    RemoteDataReply * theReply = dataLink->remoteLS("/");
+    if (theReply == NULL)
+    {
+        //TODO: consider a more fatal error here
+        totalResetErrorProcedure();
+        return;
+    }
+
+    QObject::connect(theReply, SIGNAL(haveLSReply(RequestState,QList<FileMetaData>*)),
+                     this, SLOT(getLSReply(RequestState,QList<FileMetaData>*)));
+}
+
+void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode, bool clearData)
+{
+    if (selectedNode->haveLStask())
+    {
+        return;
+    }
     QString fullFilePath = selectedNode->getFileData().getFullPath();
 
     qDebug("File Path Needs refresh: %s", qPrintable(fullFilePath));
@@ -110,33 +131,15 @@ void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode)
     {
         //TODO: consider a more fatal error here
         totalResetErrorProcedure();
+        return;
     }
-    else
-    {
-        QObject::connect(theReply, SIGNAL(haveLSReply(RequestState,QList<FileMetaData>*)), this, SLOT(getLSReply(RequestState,QList<FileMetaData>*)));
-    }
+
+    selectedNode->setLStask(theReply, clearData);
 }
 
 bool FileOperator::operationIsPending()
 {
     return fileOpPending->lockClosed();
-}
-
-void FileOperator::getLSReply(RequestState cmdReply, QList<FileMetaData> * fileDataList)
-{
-    if (cmdReply != RequestState::GOOD)
-    {
-        totalResetErrorProcedure();
-        return;
-    }
-    rootFileNode->updateFileFolder(*fileDataList);
-    translateFileDataToModel();
-    emit newFileInfo();
-}
-
-void FileOperator::opLockChanged(bool newVal)
-{
-    emit opPendingChange(newVal);
 }
 
 void FileOperator::sendDeleteReq(FileTreeNode * selectedNode)
@@ -156,9 +159,22 @@ void FileOperator::sendDeleteReq(FileTreeNode * selectedNode)
                      this, SLOT(getDeleteReply(RequestState)));
 }
 
+void FileOperator::getLSReply(RequestState replyState,QList<FileMetaData> * newFileData)
+{
+    if (replyState != RequestState::GOOD)
+    {
+        return;
+    }
+
+    rootFileNode->updateFileFolder(newFileData);
+}
+
 void FileOperator::getDeleteReply(RequestState replyState)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -188,6 +204,9 @@ void FileOperator::sendMoveReq(FileTreeNode * moveFrom, QString newName)
 void FileOperator::getMoveReply(RequestState replyState, FileMetaData * revisedFileData)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -218,6 +237,9 @@ void FileOperator::sendCopyReq(FileTreeNode * copyFrom, QString newName)
 void FileOperator::getCopyReply(RequestState replyState, FileMetaData * newFileData)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -225,8 +247,6 @@ void FileOperator::getCopyReply(RequestState replyState, FileMetaData * newFileD
 
     lsClosestNode(newFileData->getFullPath());
 }
-
-//DOLINE
 
 void FileOperator::sendRenameReq(FileTreeNode * selectedNode, QString newName)
 {
@@ -248,6 +268,9 @@ void FileOperator::sendRenameReq(FileTreeNode * selectedNode, QString newName)
 void FileOperator::getRenameReply(RequestState replyState, FileMetaData * newFileData)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -278,6 +301,9 @@ void FileOperator::sendCreateFolderReq(FileTreeNode * selectedNode, QString newN
 void FileOperator::getMkdirReply(RequestState replyState, FileMetaData * newFolderData)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -301,9 +327,26 @@ void FileOperator::sendUploadReq(FileTreeNode * uploadTarget, QString localFile)
                      this, SLOT(getUploadReply(RequestState,FileMetaData*)));
 }
 
+void FileOperator::sendUploadBuffReq(FileTreeNode * uploadTarget, QByteArray fileBuff, QString newName)
+{
+    if (!fileOpPending->checkAndClaim()) return;
+    qDebug("Starting upload procedure: to %s", qPrintable(uploadTarget->getFileData().getFullPath()));
+    RemoteDataReply * theReply = dataLink->uploadBuffer(uploadTarget->getFileData().getFullPath(), fileBuff, newName);
+    if (theReply == NULL)
+    {
+        fileOpPending->release();
+        return;
+    }
+    QObject::connect(theReply, SIGNAL(haveUploadReply(RequestState,FileMetaData*)),
+                     this, SLOT(getUploadReply(RequestState,FileMetaData*)));
+}
+
 void FileOperator::getUploadReply(RequestState replyState, FileMetaData * newFileData)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         return;
@@ -313,7 +356,7 @@ void FileOperator::getUploadReply(RequestState replyState, FileMetaData * newFil
 }
 
 void FileOperator::sendDownloadReq(FileTreeNode * targetFile, QString localDest)
-{
+{   
     if (!fileOpPending->checkAndClaim()) return;
     qDebug("Starting download procedure: %s to %s", qPrintable(targetFile->getFileData().getFullPath()),
            qPrintable(localDest));
@@ -330,6 +373,9 @@ void FileOperator::sendDownloadReq(FileTreeNode * targetFile, QString localDest)
 void FileOperator::getDownloadReply(RequestState replyState)
 {
     fileOpPending->release();
+
+    emit fileOpDone(replyState);
+
     if (replyState != RequestState::GOOD)
     {
         quickInfoPopup("Error: Unable to download requested file.");
@@ -338,6 +384,22 @@ void FileOperator::getDownloadReply(RequestState replyState)
     {
         quickInfoPopup(QString("Download complete to: %1").arg(getStringFromInitParams("localDest")));
     }
+}
+
+void FileOperator::sendDownloadBuffReq(FileTreeNode * targetFile)
+{
+    if (targetFile->haveBuffTask())
+    {
+        return;
+    }
+    qDebug("Starting download buffer procedure: %s", qPrintable(targetFile->getFileData().getFullPath()));
+    RemoteDataReply * theReply = dataLink->downloadBuffer(targetFile->getFileData().getFullPath());
+    if (theReply == NULL)
+    {
+        fileOpPending->release();
+        return;
+    }
+    targetFile->setBuffTask(theReply);
 }
 
 void FileOperator::sendCompressReq(FileTreeNode * selectedFolder)
@@ -367,6 +429,9 @@ void FileOperator::sendCompressReq(FileTreeNode * selectedFolder)
 void FileOperator::getCompressReply(RequestState finalState, QJsonDocument *)
 {
     fileOpPending->release();
+
+    emit fileOpDone(finalState);
+
     if (finalState != RequestState::GOOD)
     {
         //TODO: give reasonable error
@@ -404,6 +469,9 @@ void FileOperator::sendDecompressReq(FileTreeNode * selectedFolder)
 void FileOperator::getDecompressReply(RequestState finalState, QJsonDocument *)
 {
     fileOpPending->release();
+
+    emit fileOpDone(finalState);
+
     if (finalState != RequestState::GOOD)
     {
         //TODO: give reasonable error
@@ -411,6 +479,11 @@ void FileOperator::getDecompressReply(RequestState finalState, QJsonDocument *)
     }
 
     //TODO: ask for refresh of relevant containing folder
+}
+
+void FileOperator::fileNodesChange()
+{
+    emit fileSystemChange();
 }
 
 void FileOperator::lsClosestNode(QString fullPath)
@@ -438,15 +511,16 @@ void FileOperator::lsClosestNodeToParent(QString fullPath)
 
 FileTreeNode * FileOperator::getNodeFromModel(QStandardItem * toFind)
 {
-    if (toFind->parent() == NULL)
+    QStandardItem * findParent = toFind->parent();
+    if (findParent == NULL)
     {
-        return rootFileNode;
+        findParent = dataStore.invisibleRootItem();
     }
 
     int colNum = toFind->column();
     if (colNum != 0)
     {
-        toFind = toFind->parent()->child(toFind->row(), 0);
+        toFind = findParent->child(toFind->row(), 0);
     }
     QString realPath;
     while (toFind != NULL)
@@ -459,211 +533,20 @@ FileTreeNode * FileOperator::getNodeFromModel(QStandardItem * toFind)
     return rootFileNode->getNodeWithName(realPath);
 }
 
-QStandardItem * FileOperator::getModelEntryFromNode(FileTreeNode * toFind)
-{
-    if (toFind == NULL) return NULL;
-
-    QStandardItem * searchPointer = dataStore.invisibleRootItem();
-
-    QStringList pathSearchList = FileMetaData::getPathNameList(toFind->getFileData().getFullPath());
-
-    for (auto itr = pathSearchList.cbegin(); itr != pathSearchList.cend(); itr++)
-    {
-        bool foundNext = false;
-        for (int i = 0; i < searchPointer->rowCount(); i++)
-        {
-            if (searchPointer->child(i,(int)FileColumn::FILENAME)->text() == (*itr))
-            {
-                searchPointer = searchPointer->child(i,(int)FileColumn::FILENAME);
-                foundNext = true;
-                break;
-            }
-        }
-        if (foundNext == false)
-        {
-            return NULL;
-        }
-    }
-
-    if (fileInModel(toFind,searchPointer))
-    {
-        return searchPointer;
-    }
-    return NULL;
-}
-
 FileTreeNode * FileOperator::getNodeFromIndex(QModelIndex fileIndex)
 {
     QStandardItem * theModelItem = dataStore.itemFromIndex(fileIndex);
     return getNodeFromModel(theModelItem);
 }
 
-void FileOperator::translateFileDataToModel()
+FileTreeNode * FileOperator::getNodeFromName(QString fullPath)
 {
-    FileTreeNode * currentFile = rootFileNode;
-    QStandardItem * currentModelEntry = dataStore.invisibleRootItem();
-
-    translateFileDataRecurseHelper(currentFile, currentModelEntry);
+    return rootFileNode->getNodeWithName(fullPath);
 }
 
-void FileOperator::translateFileDataRecurseHelper(FileTreeNode * currentFile, QStandardItem * currentModelEntry)
+FileTreeNode * FileOperator::getClosestNodeFromName(QString fullPath)
 {
-    //TODO: I am guessing this could be more efficient
-    QList<FileTreeNode *> * childList = currentFile->getChildList();
-    for (auto itr = childList->begin(); itr != childList->end(); itr++)
-    {
-        (*itr)->marked = false;
-    }
-
-    for (int i = 0; i < currentModelEntry->rowCount(); i++)
-    {
-        QStandardItem * testItem = currentModelEntry->child(i, (int)FileColumn::FILENAME);
-        FileTreeNode * testFile = currentFile->getChildNodeWithName(testItem->text());
-        if (testFile == NULL)
-        {
-            currentModelEntry->removeRow(i);
-            i = 0;
-        }
-        else
-        {
-            changeModelFromFile(testItem,testFile);
-            testFile->marked = true;
-        }
-    }
-
-    for (auto itr = childList->begin(); itr != childList->end(); itr++)
-    {
-        if ((*itr)->marked == false)
-        {
-            newModelRowFromFile(currentModelEntry,(*itr));
-        }
-    }
-
-    for (int i = 0; i < currentModelEntry->rowCount(); i++)
-    {
-        QStandardItem * testItem = currentModelEntry->child(i, (int)FileColumn::FILENAME);
-        FileTreeNode * testFile = currentFile->getChildNodeWithName(testItem->text(), true);
-        if (testFile == NULL)
-        {
-            myParent->fatalInterfaceError("Internal file tree parse is self-inconsistant.");
-            return;
-        }
-        translateFileDataRecurseHelper(testFile,testItem);
-    }
-}
-
-bool FileOperator::fileInModel(FileTreeNode * toFind, QStandardItem * compareTo)
-{
-    if ((toFind == NULL) || (compareTo == NULL))
-    {
-        return false;
-    }
-    FileMetaData rawData = toFind->getFileData();
-    QStandardItem * parentNode = compareTo->parent();
-    if (parentNode == NULL)
-    {
-        parentNode = dataStore.invisibleRootItem();
-    }
-
-    int rowNum = compareTo->row();
-    for (int i = 0; i < tableNumCols; i++)
-    {
-        if (columnInUse(i))
-        {
-            if (parentNode->child(rowNum,i)->text() != getRawColumnData(i,&rawData))
-            {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-void FileOperator::changeModelFromFile(QStandardItem * targetRow, FileTreeNode * dataSource)
-{
-    if ((targetRow == NULL) || (dataSource == NULL))
-    {
-        myParent->fatalInterfaceError("NULL pointer in changeModelFromFile method");
-        return;
-    }
-
-    FileMetaData rawData = dataSource->getFileData();
-    QStandardItem * parentNode = targetRow->parent();
-    if (parentNode == NULL)
-    {
-        parentNode = dataStore.invisibleRootItem();
-    }
-
-    int rowNum = targetRow->row();
-    for (int i = 0; i < tableNumCols; i++)
-    {
-        QStandardItem * valToSwitch = parentNode->child(rowNum,i);
-
-        if (columnInUse(i))
-        {
-            valToSwitch->setText(getRawColumnData(i,&rawData));
-        }
-    }
-}
-
-void FileOperator::newModelRowFromFile(QStandardItem * parentItem, FileTreeNode * dataSource)
-{
-    if ((parentItem == NULL) || (dataSource == NULL))
-    {
-        myParent->fatalInterfaceError("NULL pointer in changeModelFromFile method");
-        return;
-    }
-    FileMetaData rawData = dataSource->getFileData();
-    QList<QStandardItem *> newDataList;
-
-    for (int i = 0; i < tableNumCols; i++)
-    {
-        if (columnInUse(i))
-        {
-            newDataList.append(new QStandardItem(getRawColumnData(i,&rawData)));
-        }
-        else
-        {
-            newDataList.append(new QStandardItem(""));
-        }
-    }
-
-    parentItem->appendRow(newDataList);
-}
-
-bool FileOperator::columnInUse(int i)
-{
-    //TODO: This is a temporary function until the used/hidden columns are clarified
-    if ((FileColumn)i == FileColumn::FILENAME)
-    {
-        return true;
-    }
-    else if ((FileColumn)i == FileColumn::TYPE)
-    {
-        return true;
-    }
-    else if ((FileColumn)i == FileColumn::SIZE)
-    {
-        return true;
-    }
-    return false;
-}
-
-QString FileOperator::getRawColumnData(int i, FileMetaData * rawFileData)
-{
-    if ((FileColumn)i == FileColumn::FILENAME)
-    {
-        return rawFileData->getFileName();
-    }
-    else if ((FileColumn)i == FileColumn::TYPE)
-    {
-        return rawFileData->getFileTypeString();
-    }
-    else if ((FileColumn)i == FileColumn::SIZE)
-    {
-        return QString::number(rawFileData->getSize());
-    }
-    return "";
+    return rootFileNode->getClosestNodeWithName(fullPath);
 }
 
 void FileOperator::quickInfoPopup(QString infoText)

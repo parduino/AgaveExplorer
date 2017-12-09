@@ -45,7 +45,7 @@ class ExplorerDriver : public AgaveSetupDriver
     Q_OBJECT
 
 public:
-    explicit ExplorerDriver(QObject *parent = nullptr);
+    explicit ExplorerDriver(QObject *parent = nullptr, bool debug = false);
     ~ExplorerDriver();
 
     virtual void startup();
@@ -56,6 +56,9 @@ public:
 
     virtual QString getBanner();
     virtual QString getVersion();
+
+private slots:
+    void loadAppList(RequestState replyState, QJsonArray * appList);
 
 private:
     ExplorerWindow * mainWindow = NULL;

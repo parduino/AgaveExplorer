@@ -68,6 +68,8 @@ public:
 
     void startAndShow();
 
+    void addAppToList(QString appName);
+
 private slots:
     void agaveAppSelected(QModelIndex clickedItem);
 
@@ -83,6 +85,8 @@ private slots:
     void uploadMenuItem();
     void createFolderMenuItem();
     void downloadMenuItem();
+    void readMenuItem();
+    void retriveMenuItem();
     void compressMenuItem();
     void decompressMenuItem();
     void refreshMenuItem();

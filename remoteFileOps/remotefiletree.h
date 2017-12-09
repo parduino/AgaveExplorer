@@ -47,6 +47,7 @@
 #include <QMenu>
 #include <QCursor>
 #include <QStandardItem>
+#include <QModelIndexList>
 
 //NOTE: FILENAME MUST == 0 for these functions to work.
 //The other columns can be changed
@@ -69,11 +70,9 @@ class RemoteFileTree : public QTreeView
 
 public:
     explicit RemoteFileTree(QWidget *parent = 0);
-    ~RemoteFileTree();
 
     void setFileOperator(FileOperator * theOperator);
     FileOperator * getFileOperator();
-    void setSelectedLabel(QLabel * selectedFileDisp);
 
     void refreshSelection();
     FileTreeNode * getSelectedNode();
@@ -83,16 +82,14 @@ signals:
     void newFileSelected(FileTreeNode * newFileData);
 
 public slots:
-    void fileEntryTouched(QModelIndex fileIndex);
+    void fileEntryTouched(QModelIndex itemTouched);
+    void forceSelectionRefresh();
 
 private slots:
     void folderExpanded(QModelIndex itemOpened);
 
 private:
     FileOperator * myFileOperator;
-
-    QLabel * selectedFileDisplay = NULL;
-    FileTreeNode * selectedItem = NULL;
 };
 
 #endif // REMOTEFILEWINDOW_H
