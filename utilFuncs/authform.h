@@ -37,10 +37,6 @@
 #define AUTHFORM_H
 
 #include <QMainWindow>
-#include <QLabel>
-#include <QLineEdit>
-#include <QStatusBar>
-#include <QPushButton>
 
 enum class RequestState;
 class AgaveSetupDriver;

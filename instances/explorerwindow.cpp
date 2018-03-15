@@ -41,12 +41,12 @@
 
 #include "remoteFileOps/filetreenode.h"
 #include "remoteFileOps/fileoperator.h"
-#include "remoteFileOps/remotefiletree.h"
 #include "remoteFileOps/joboperator.h"
 
 #include "../utilFuncs/singlelinedialog.h"
 
 #include "explorerdriver.h"
+#include "../ae_globals.h"
 
 ExplorerWindow::ExplorerWindow(ExplorerDriver *theDriver, QWidget *parent) :
     QMainWindow(parent),
@@ -58,8 +58,7 @@ ExplorerWindow::ExplorerWindow(ExplorerDriver *theDriver, QWidget *parent) :
     dataLink = programDriver->getDataConnection();
 
     agaveParamLists.insert("compress",{"compression_type"});
-    agaveParamLists.insert("extract", {"inputFile"});
-    agaveParamLists.insert("openfoam", {"solver","inputDirectory"});
+    agaveParamLists.insert("extract", {});
 
     for (auto itr = agaveParamLists.keyBegin(); itr != agaveParamLists.keyEnd(); itr++)
     {
@@ -79,14 +78,13 @@ ExplorerWindow::~ExplorerWindow()
 void ExplorerWindow::startAndShow()
 {
     theFileOperator = programDriver->getFileHandler();
-    ui->remoteFileView->setFileOperator(theFileOperator);
     ui->remoteFileView->setupFileView();
     QObject::connect(ui->remoteFileView, SIGNAL(customContextMenuRequested(QPoint)),
                      this, SLOT(customFileMenu(QPoint)));
+    QObject::connect(programDriver->getFileHandler(), SIGNAL(recursiveProcessFinished(bool,QString)),
+                     this, SLOT(recursiveProcessPopup(bool,QString)));
 
     ui->agaveAppList->setModel(&taskListModel);
-
-    ui->jobTable->setJobHandle(programDriver->getJobHandler());
     QObject::connect(ui->jobTable, SIGNAL(customContextMenuRequested(QPoint)),
                      this, SLOT(jobRightClickMenu(QPoint)));
 
@@ -102,20 +100,15 @@ void ExplorerWindow::startAndShow()
 
 void ExplorerWindow::addAppToList(QString appName)
 {
-    if (appName == "cwe-mesh")
+    if (appName == "cwe-serial")
     {
-        agaveParamLists.insert("cwe-mesh", {});
-        taskListModel.appendRow(new QStandardItem("cwe-mesh"));
+        agaveParamLists.insert("cwe-serial", {"stage", "file_input"});
+        taskListModel.appendRow(new QStandardItem("cwe-serial"));
     }
-    else if (appName == "cwe-sim")
+    else if (appName == "cwe-parallel")
     {
-        agaveParamLists.insert("cwe-sim", {});
-        taskListModel.appendRow(new QStandardItem("cwe-sim"));
-    }
-    else if (appName == "cwe-post")
-    {
-        agaveParamLists.insert("cwe-post", {});
-        taskListModel.appendRow(new QStandardItem("cwe-post"));
+        agaveParamLists.insert("cwe-parallel", {"stage", "file_input"});
+        taskListModel.appendRow(new QStandardItem("cwe-parallel"));
     }
 }
 
@@ -205,7 +198,7 @@ void ExplorerWindow::finishedAppInvoke(RequestState, QJsonDocument *)
 void ExplorerWindow::customFileMenu(QPoint pos)
 {
     QMenu fileMenu;
-    if (ui->remoteFileView->getFileOperator()->operationIsPending())
+    if (ae_globals::get_Driver()->getFileHandler()->operationIsPending())
     {
         fileMenu.addAction("File Operation In Progress . . .");
         fileMenu.exec(QCursor::pos());
@@ -219,19 +212,17 @@ void ExplorerWindow::customFileMenu(QPoint pos)
 
     //If we did not click anything, we should return
     if (targetNode == NULL) return;
-    if (targetNode->isRootNode()) return;
     FileMetaData theFileData = targetNode->getFileData();
 
     if (theFileData.getFileType() == FileType::INVALID) return;
-    if (theFileData.getFileType() == FileType::UNLOADED) return;
-    if (theFileData.getFileType() == FileType::EMPTY_FOLDER) return;
 
-    fileMenu.addAction("Copy To . . .",this, SLOT(copyMenuItem()));
-    fileMenu.addAction("Move To . . .",this, SLOT(moveMenuItem()));
-    fileMenu.addAction("Rename",this, SLOT(renameMenuItem()));
-    //We don't let the user delete the username folder
-    if (!(targetNode->getParentNode()->isRootNode()))
+    //We don't let the user fiddle with the username folder
+    if (!(targetNode->isRootNode()))
     {
+        fileMenu.addAction("Copy To . . .",this, SLOT(copyMenuItem()));
+        fileMenu.addAction("Move To . . .",this, SLOT(moveMenuItem()));
+        fileMenu.addAction("Rename",this, SLOT(renameMenuItem()));
+
         fileMenu.addSeparator();
         fileMenu.addAction("Delete",this, SLOT(deleteMenuItem()));
         fileMenu.addSeparator();
@@ -239,6 +230,8 @@ void ExplorerWindow::customFileMenu(QPoint pos)
     if (theFileData.getFileType() == FileType::DIR)
     {
         fileMenu.addAction("Upload File Here",this, SLOT(uploadMenuItem()));
+        fileMenu.addAction("Upload Folder Here",this, SLOT(uploadFolderMenuItem()));
+        fileMenu.addAction("Download Folder",this, SLOT(downloadFolderMenuItem()));
         fileMenu.addAction("Create New Folder",this, SLOT(createFolderMenuItem()));
     }
     if (theFileData.getFileType() == FileType::FILE)
@@ -253,7 +246,7 @@ void ExplorerWindow::customFileMenu(QPoint pos)
             fileMenu.addAction("Retrive File",this, SLOT(retriveMenuItem()));
         }
     }
-    if (theFileData.getFileType() == FileType::DIR)
+    if ((theFileData.getFileType() == FileType::DIR) && (!targetNode->isRootNode()))
     {
         fileMenu.addAction("Compress Folder",this, SLOT(compressMenuItem()));
     }
@@ -280,7 +273,7 @@ void ExplorerWindow::copyMenuItem()
         return;
     }
 
-    ui->remoteFileView->getFileOperator()->sendCopyReq(targetNode, newNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendCopyReq(targetNode, newNamePopup.getInputText());
 }
 
 void ExplorerWindow::moveMenuItem()
@@ -292,7 +285,7 @@ void ExplorerWindow::moveMenuItem()
         return;
     }
 
-    ui->remoteFileView->getFileOperator()->sendMoveReq(targetNode,newNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendMoveReq(targetNode,newNamePopup.getInputText());
 }
 
 void ExplorerWindow::renameMenuItem()
@@ -304,14 +297,14 @@ void ExplorerWindow::renameMenuItem()
         return;
     }
 
-    ui->remoteFileView->getFileOperator()->sendRenameReq(targetNode, newNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendRenameReq(targetNode, newNamePopup.getInputText());
 }
 
 void ExplorerWindow::deleteMenuItem()
 {
-    if (ui->remoteFileView->getFileOperator()->deletePopup(targetNode))
+    if (ae_globals::get_Driver()->getFileHandler()->deletePopup(targetNode))
     {
-        ui->remoteFileView->getFileOperator()->sendDeleteReq(targetNode);
+        ae_globals::get_Driver()->getFileHandler()->sendDeleteReq(targetNode);
     }
 }
 
@@ -323,7 +316,29 @@ void ExplorerWindow::uploadMenuItem()
     {
         return;
     }
-    ui->remoteFileView->getFileOperator()->sendUploadReq(targetNode, uploadNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendUploadReq(targetNode, uploadNamePopup.getInputText());
+}
+
+void ExplorerWindow::uploadFolderMenuItem()
+{
+    SingleLineDialog uploadNamePopup("Please input full path of folder to upload:", "");
+
+    if (uploadNamePopup.exec() != QDialog::Accepted)
+    {
+        return;
+    }
+    ae_globals::get_Driver()->getFileHandler()->enactRecursiveUpload(targetNode, uploadNamePopup.getInputText());
+}
+
+void ExplorerWindow::downloadFolderMenuItem()
+{
+    SingleLineDialog downloadNamePopup("Please input full path of folder download destination:", "");
+
+    if (downloadNamePopup.exec() != QDialog::Accepted)
+    {
+        return;
+    }
+    ae_globals::get_Driver()->getFileHandler()->enactRecursiveDownload(targetNode, downloadNamePopup.getInputText());
 }
 
 void ExplorerWindow::createFolderMenuItem()
@@ -334,7 +349,7 @@ void ExplorerWindow::createFolderMenuItem()
     {
         return;
     }
-    ui->remoteFileView->getFileOperator()->sendCreateFolderReq(targetNode, newFolderNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendCreateFolderReq(targetNode, newFolderNamePopup.getInputText());
 }
 
 void ExplorerWindow::downloadMenuItem()
@@ -345,7 +360,7 @@ void ExplorerWindow::downloadMenuItem()
     {
         return;
     }
-    ui->remoteFileView->getFileOperator()->sendDownloadReq(targetNode, downloadNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->sendDownloadReq(targetNode, downloadNamePopup.getInputText());
 }
 
 void ExplorerWindow::readMenuItem()
@@ -357,22 +372,22 @@ void ExplorerWindow::readMenuItem()
 
 void ExplorerWindow::retriveMenuItem()
 {
-    ui->remoteFileView->getFileOperator()->sendDownloadBuffReq(targetNode);
+    ae_globals::get_Driver()->getFileHandler()->sendDownloadBuffReq(targetNode);
 }
 
 void ExplorerWindow::compressMenuItem()
 {
-    ui->remoteFileView->getFileOperator()->sendCompressReq(targetNode);
+    ae_globals::get_Driver()->getFileHandler()->sendCompressReq(targetNode);
 }
 
 void ExplorerWindow::decompressMenuItem()
 {
-    ui->remoteFileView->getFileOperator()->sendDecompressReq(targetNode);
+    ae_globals::get_Driver()->getFileHandler()->sendDecompressReq(targetNode);
 }
 
 void ExplorerWindow::refreshMenuItem()
 {
-    ui->remoteFileView->getFileOperator()->enactFolderRefresh(targetNode);
+    ae_globals::get_Driver()->getFileHandler()->enactFolderRefresh(targetNode);
 }
 
 void ExplorerWindow::jobRightClickMenu(QPoint)
@@ -385,4 +400,19 @@ void ExplorerWindow::jobRightClickMenu(QPoint)
 
     jobMenu.addAction("Refresh Job Info", programDriver->getJobHandler(), SLOT(demandJobDataRefresh()));
     jobMenu.exec(QCursor::pos());
+}
+
+void ExplorerWindow::recursiveProcessPopup(bool success, QString message)
+{
+    QMessageBox dataPopup;
+    if (success)
+    {
+        dataPopup.setIcon(QMessageBox::Information);
+    }
+    else
+    {
+        dataPopup.setIcon(QMessageBox::Critical);
+    }
+    dataPopup.setText(message);
+    dataPopup.exec();
 }

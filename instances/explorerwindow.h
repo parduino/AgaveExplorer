@@ -37,13 +37,9 @@
 #define EXPLORERWINDOW_H
 
 #include <QMainWindow>
-#include <QTreeView>
 #include <QStandardItemModel>
-#include <QStackedWidget>
 #include <QLineEdit>
-
-#include <QMap>
-#include <QStringList>
+#include <QMenu>
 
 class RemoteFileTree;
 class FileMetaData;
@@ -82,7 +78,11 @@ private slots:
     void moveMenuItem();
     void renameMenuItem();
     void deleteMenuItem();
+
     void uploadMenuItem();
+    void uploadFolderMenuItem();
+    void downloadFolderMenuItem();
+
     void createFolderMenuItem();
     void downloadMenuItem();
     void readMenuItem();
@@ -92,6 +92,8 @@ private slots:
     void refreshMenuItem();
 
     void jobRightClickMenu(QPoint);
+
+    void recursiveProcessPopup(bool success, QString message);
 
 private:
     Ui::ExplorerWindow *ui;

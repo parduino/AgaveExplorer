@@ -35,6 +35,7 @@
 
 #include "agavesetupdriver.h"
 
+#include "../AgaveExplorer/ae_globals.h"
 #include "../AgaveExplorer/utilFuncs/authform.h"
 #include "../AgaveExplorer/remoteFileOps/fileoperator.h"
 #include "../AgaveExplorer/remoteFileOps/joboperator.h"
@@ -43,6 +44,7 @@
 
 AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent)
 {
+    ae_globals::set_Driver(this);
     debugMode = debug;
 }
 
@@ -84,13 +86,7 @@ void AgaveSetupDriver::getAuthReply(RequestState authReply)
 
 void AgaveSetupDriver::fatalInterfaceError(QString errText)
 {
-    QMessageBox errorMessage;
-    errorMessage.setText(errText);
-    errorMessage.setStandardButtons(QMessageBox::Close);
-    errorMessage.setDefaultButton(QMessageBox::Close);
-    errorMessage.setIcon(QMessageBox::Critical);
-    errorMessage.exec();
-    QCoreApplication::instance()->exit(-1);
+    ae_globals::displayFatalPopup(errText);
 }
 
 void AgaveSetupDriver::subWindowHidden(bool nowVisible)
@@ -130,5 +126,6 @@ void AgaveSetupDriver::shutdown()
 
 void AgaveSetupDriver::shutdownCallback()
 {
+    qDebug("Invoking final exit");
     QCoreApplication::instance()->exit(0);
 }

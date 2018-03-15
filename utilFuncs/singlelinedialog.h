@@ -37,9 +37,6 @@
 #define SINGLELINEDIALOG_H
 
 #include <QDialog>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
 
 namespace Ui {
 class SingleLineDialog;

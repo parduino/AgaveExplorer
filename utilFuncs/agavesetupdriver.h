@@ -37,18 +37,13 @@
 #define AGAVESETUPDRIVER_H
 
 #include <QObject>
-#include <QCoreApplication>
-#include <QWidget>
-#include <QWindow>
-#include <QMessageBox>
 
 enum class RequestState;
 
 class RemoteDataInterface;
 
 class AuthForm;
-
-class ExplorerWindow;
+//class ExplorerWindow;
 class JobOperator;
 class FileOperator;
 

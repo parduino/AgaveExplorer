@@ -35,28 +35,20 @@
 
 #include "remotefiletree.h"
 
-#include "../AgaveClientInterface/remotedatainterface.h"
-#include "../AgaveClientInterface/filemetadata.h"
-
+#include "../utilFuncs/linkedstandarditem.h"
 #include "fileoperator.h"
 #include "filetreenode.h"
+#include "../ae_globals.h"
+#include "../utilFuncs/agavesetupdriver.h"
 
 RemoteFileTree::RemoteFileTree(QWidget *parent) :
     QTreeView(parent)
 {
+    ae_globals::get_file_handle()->linkToFileTree(this);
+
     QObject::connect(this, SIGNAL(expanded(QModelIndex)), this, SLOT(folderExpanded(QModelIndex)));
     QObject::connect(this, SIGNAL(clicked(QModelIndex)), this, SLOT(fileEntryTouched(QModelIndex)));
-}
-
-void RemoteFileTree::setFileOperator(FileOperator * theOperator)
-{
-    myFileOperator = theOperator;
-    myFileOperator->linkToFileTree(this);
-}
-
-FileOperator * RemoteFileTree::getFileOperator()
-{
-    return myFileOperator;
+    this->setEditTriggers(QTreeView::NoEditTriggers);
 }
 
 FileTreeNode * RemoteFileTree::getSelectedNode()
@@ -64,8 +56,12 @@ FileTreeNode * RemoteFileTree::getSelectedNode()
     QModelIndexList indexList = this->selectedIndexes();
 
     if (indexList.isEmpty()) return NULL;
+    QStandardItemModel * theModel = qobject_cast<QStandardItemModel *>(this->model());
+    if (theModel == NULL) return NULL;
 
-    return myFileOperator->getNodeFromIndex(indexList.at(0));
+    LinkedStandardItem * theLinkedItem = (LinkedStandardItem *)theModel->itemFromIndex(indexList.at(0));
+
+    return qobject_cast<FileTreeNode *>(theLinkedItem->getLinkedObject());
 }
 
 void RemoteFileTree::setupFileView()
@@ -84,9 +80,9 @@ void RemoteFileTree::folderExpanded(QModelIndex fileIndex)
     fileEntryTouched(fileIndex);
     FileTreeNode * selectedItem = getSelectedNode();
     if (selectedItem == NULL) return;
-    if (!selectedItem->childIsUnloaded()) return;
+    if (selectedItem->getNodeState() == NodeState::FOLDER_CONTENTS_LOADED) return;
 
-    myFileOperator->enactFolderRefresh(selectedItem);
+    ae_globals::get_file_handle()->enactFolderRefresh(selectedItem);
 }
 
 void RemoteFileTree::fileEntryTouched(QModelIndex itemTouched)
@@ -94,15 +90,38 @@ void RemoteFileTree::fileEntryTouched(QModelIndex itemTouched)
     this->selectionModel()->clearSelection();
     QStandardItemModel * dataStore = (QStandardItemModel *)this->model();
     QStandardItem * selectedItem = dataStore->itemFromIndex(itemTouched);
-    QStandardItem * parentNode = selectedItem->parent();
-    int rowNum = selectedItem->row();
-    if (parentNode == NULL)
+    if (selectedItem == NULL)
     {
-        parentNode = dataStore->invisibleRootItem();
+        return;
     }
 
-    this->selectionModel()->select(QItemSelection(parentNode->child(rowNum, 0)->index(),
-                                                  parentNode->child(rowNum, parentNode->columnCount() - 1)->index()),
+    LinkedStandardItem * linkedItem = (LinkedStandardItem *)(selectedItem);
+
+    FileTreeNode * clickedNode = qobject_cast<FileTreeNode *>(linkedItem->getLinkedObject());
+    if (clickedNode == NULL)
+    {
+        return;
+    }
+
+    if (!clickedNode->nodeIsDisplayed())
+    {
+        return;
+    }
+
+    QStandardItem * parentNode;
+    if (clickedNode->isRootNode())
+    {
+        parentNode = selectedItem->model()->invisibleRootItem();
+    }
+    else
+    {
+        parentNode = clickedNode->getParentNode()->getFirstDataNode();
+    }
+
+    int rowNum = clickedNode->getFirstDataNode()->row();
+
+    this->selectionModel()->select(QItemSelection(parentNode->child(rowNum,0)->index(),
+                                                  parentNode->child(rowNum,parentNode->columnCount()-1)->index()),
                                    QItemSelectionModel::Select);
     emit newFileSelected(getSelectedNode());
 }

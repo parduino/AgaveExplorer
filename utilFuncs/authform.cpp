@@ -101,7 +101,7 @@ void AuthForm::performAuth()
     }
     else
     {
-        //TODO: Need fatal error here
+        myDriver->fatalInterfaceError("Unable to connect to DesignSafe. Please check internet connection.");
     }
 }
 

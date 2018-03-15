@@ -38,6 +38,8 @@
 
 #include "utilFuncs/agavesetupdriver.h"
 
+#include <QWindow>
+
 class ExplorerWindow;
 
 class ExplorerDriver : public AgaveSetupDriver

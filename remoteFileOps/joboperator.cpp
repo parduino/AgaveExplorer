@@ -35,21 +35,29 @@
 
 #include "joboperator.h"
 
-#include "remotefiletree.h"
+#include "../ae_globals.h"
+
 #include "remotejoblister.h"
 #include "../AgaveClientInterface/remotedatainterface.h"
 #include "../AgaveClientInterface/remotejobdata.h"
-#include "remotejobentry.h"
+#include "joblistnode.h"
 
-JobOperator::JobOperator(RemoteDataInterface * newDataLink, QObject * parent) : QObject((QObject *)parent)
+JobOperator::JobOperator(QObject * parent) : QObject((QObject *)parent)
 {
-    dataLink = newDataLink;
+    theJobList.setHorizontalHeaderLabels({"Task Name", "State", "Agave App", "Time Created", "Agave ID"});
+}
+
+JobOperator::~JobOperator()
+{
+    for (auto itr = jobData.begin(); itr != jobData.end(); itr++)
+    {
+        delete (*itr);
+    }
 }
 
 void JobOperator::linkToJobLister(RemoteJobLister * newLister)
 {
     newLister->setModel(&theJobList);
-    theJobList.setHorizontalHeaderLabels({"Task Name", "State", "Agave App", "Time Created", "Agave ID"});
 }
 
 void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJobData> * theData)
@@ -71,13 +79,13 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
     {
         if (jobData.contains((*itr).getID()))
         {
-            RemoteJobEntry * theItem = jobData.value((*itr).getID());
+            JobListNode * theItem = jobData.value((*itr).getID());
             theItem->setData(*itr);
         }
         else
         {
-            RemoteJobEntry * theItem = new RemoteJobEntry(*itr, theJobList.invisibleRootItem(), this);
-            jobData.insert(theItem->getData().getID(), theItem);
+            JobListNode * theItem = new JobListNode(*itr, &theJobList, this);
+            jobData.insert(theItem->getData()->getID(), theItem);
         }
         if (!notDone && ((*itr).getState() != "FINISHED") && ((*itr).getState() != "FAILED"))
         {
@@ -93,44 +101,53 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
     }
 }
 
-void JobOperator::refreshRunningJobDetails(RequestState replyState, RemoteJobData *theData)
+QMap<QString, const RemoteJobData *> JobOperator::getRunningJobs()
 {
-    if (replyState != RequestState::GOOD)
-    {
-        //TODO: some error here
-        return;
-    }
-
-    if (jobData.contains(theData->getID()))
-    {
-        RemoteJobEntry * theItem = jobData.value(theData->getID());
-        theItem->setDetails(theData->getInputs(), theData->getParams());
-    }
-}
-
-QMap<QString, RemoteJobData> JobOperator::getRunningJobs()
-{
-    QMap<QString, RemoteJobData> ret;
+    QMap<QString, const RemoteJobData *> ret;
 
     for (auto itr = jobData.cbegin(); itr != jobData.cend(); itr++)
     {
-        QString myState = (*itr)->getData().getState();
+        QString myState = (*itr)->getData()->getState();
         if (!myState.isEmpty() && (myState != "FINISHED") && (myState != "FAILED"))
         {
-            ret.insert((*itr)->getData().getID(), (*itr)->getData());
+            ret.insert((*itr)->getData()->getID(), (*itr)->getData());
         }
     }
 
     return ret;
 }
 
-void JobOperator::requestJobDetails(RemoteJobData *toFetch)
+void JobOperator::requestJobDetails(const RemoteJobData *toFetch)
 {
-    if (toFetch->detailsLoaded()) return;
+    if (!jobData.contains(toFetch->getID()))
+    {
+        return;
+    }
+    JobListNode * realNode = jobData.value(toFetch->getID());
 
-    RemoteDataReply * jobReply = dataLink->getJobDetails(toFetch->getID());
-    QObject::connect(jobReply, SIGNAL(haveJobDetails(RequestState,RemoteJobData*)),
-                     this, SLOT(refreshRunningJobDetails(RequestState,RemoteJobData*)));
+    if (realNode->haveDetails()) return;
+    if (realNode->haveDetailTask()) return;
+
+    RemoteDataReply * jobReply = ae_globals::get_connection()->getJobDetails(toFetch->getID());
+
+    if (jobReply == NULL) return; //TODO: Consider an error message here
+
+    realNode->setDetailTask(jobReply);
+}
+
+void JobOperator::underlyingJobChanged()
+{
+    emit newJobData();
+}
+
+const RemoteJobData * JobOperator::findJobByID(QString idToFind)
+{
+    if (!jobData.contains(idToFind))
+    {
+        return NULL;
+    }
+
+    return jobData.value(idToFind)->getData();
 }
 
 void JobOperator::demandJobDataRefresh()
@@ -139,7 +156,7 @@ void JobOperator::demandJobDataRefresh()
     {
         return;
     }
-    currentJobReply = dataLink->getListOfJobs();
+    currentJobReply = ae_globals::get_connection()->getListOfJobs();
     QObject::connect(currentJobReply, SIGNAL(haveJobList(RequestState,QList<RemoteJobData>*)),
                      this, SLOT(refreshRunningJobList(RequestState,QList<RemoteJobData>*)));
 }

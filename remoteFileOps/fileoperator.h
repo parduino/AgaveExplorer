@@ -33,16 +33,15 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-//NOTE: TODO Need to rethink multiple nested ls requests in a tree
-//Suggest using a pending record queue. ls of an arbitrary path sould insigate several ls from last known node
-
 #ifndef FILEOPERATOR_H
 #define FILEOPERATOR_H
 
 #include <QObject>
-#include <QList>
 #include <QStandardItemModel>
-#include <QStandardItem>
+#include <QMessageBox>
+
+#include <QFile>
+#include <QDir>
 
 class RemoteFileTree;
 class FileMetaData;
@@ -52,13 +51,16 @@ class EasyBoolLock;
 class AgaveSetupDriver;
 
 enum class RequestState;
+enum class FileOp_RecursiveTask {NONE, DOWNLOAD, UPLOAD};
+enum class RecursiveErrorCodes {NONE, MKDIR_FAIL, UPLOAD_FAIL, TYPE_MISSMATCH, LOST_FILE};
 
 class FileOperator : public QObject
 {
     Q_OBJECT
 
 public:
-    FileOperator(RemoteDataInterface * newDataLink, AgaveSetupDriver * parent);
+    FileOperator(AgaveSetupDriver * parent);
+    ~FileOperator();
     void linkToFileTree(RemoteFileTree * newTreeLink);
 
     void resetFileData();
@@ -66,15 +68,16 @@ public:
     void totalResetErrorProcedure();
     bool operationIsPending();
 
-    FileTreeNode * getNodeFromIndex(QModelIndex fileIndex);
     FileTreeNode * getNodeFromName(QString fullPath);
     FileTreeNode * getClosestNodeFromName(QString fullPath);
+    FileTreeNode * speculateNodeWithName(QString fullPath, bool folder);
+    FileTreeNode * speculateNodeWithName(FileTreeNode * baseNode, QString addedPath, bool folder);
 
-    void lsClosestNode(QString fullPath);
-    void lsClosestNodeToParent(QString fullPath);
+    void lsClosestNode(QString fullPath, bool clearData = false);
+    void lsClosestNodeToParent(QString fullPath, bool clearData = false);
 
     void enactRootRefresh();
-    void enactFolderRefresh(FileTreeNode * selectedNode, bool clearData = true);
+    void enactFolderRefresh(FileTreeNode * selectedNode, bool clearData = false);
 
     void sendDeleteReq(FileTreeNode * selectedNode);
     void sendMoveReq(FileTreeNode * moveFrom, QString newName);
@@ -88,6 +91,12 @@ public:
     void sendDownloadReq(FileTreeNode * targetFile, QString localDest);
     void sendDownloadBuffReq(FileTreeNode * targetFile);
 
+    bool performingRecursiveDownload();
+    void enactRecursiveDownload(FileTreeNode * targetFolder, QString containingDestFolder);
+    bool performingRecursiveUpload();
+    void enactRecursiveUpload(FileTreeNode *containingDestFolder, QString localFolderToCopy);
+    void abortRecursiveProcess();
+
     void sendCompressReq(FileTreeNode * selectedFolder);
     void sendDecompressReq(FileTreeNode * selectedFolder);
 
@@ -97,10 +106,9 @@ public:
 signals:
     void fileOpDone(RequestState opState);
     void fileSystemChange();
+    bool recursiveProcessFinished(bool success, QString message);
 
 private slots:
-    void getLSReply(RequestState replyState,QList<FileMetaData> * newFileData);
-
     void getDeleteReply(RequestState replyState);
     void getMoveReply(RequestState replyState, FileMetaData * revisedFileData);
     void getCopyReply(RequestState replyState, FileMetaData * newFileData);
@@ -116,14 +124,23 @@ private slots:
 
     void fileNodesChange();
 
+    void getRecursiveUploadReply(RequestState replyState, FileMetaData * newFileData);
+    void getRecursiveMkdirReply(RequestState replyState, FileMetaData * newFolderData);
+
 private:
     QString getStringFromInitParams(QString stringKey);
 
-    //If input is NULL, return NULL, but don't resync
-    FileTreeNode * getNodeFromModel(QStandardItem * toFind);
+    void recursiveDownloadProcessRetry();
+    bool recursiveDownloadRetrivalHelper(FileTreeNode * nodeToCheck); //Return true if have all data
+    bool recursiveDownloadFolderEmitHelper(QDir currentLocalDir, FileTreeNode * nodeToGet, RecursiveErrorCodes &errNum); //Return true if successful file output data
+    bool emitBufferToFile(QDir containingDir, FileTreeNode * nodeToGet, RecursiveErrorCodes &errNum); //Return true if successful file output data
 
-    AgaveSetupDriver * myParent;
-    RemoteDataInterface * dataLink;
+    void recursiveUploadProcessRetry();
+    bool recursiveUploadHelper(FileTreeNode * nodeToSend, QDir localPath, RecursiveErrorCodes &errNum); //Return true if all data sent and ls verified
+
+    bool sendRecursiveCreateFolderReq(FileTreeNode * selectedNode, QString newName);
+    bool sendRecursiveUploadReq(FileTreeNode * uploadTarget, QString localFile);
+
     FileTreeNode * rootFileNode = NULL;
     QStandardItemModel dataStore;
 
@@ -135,6 +152,11 @@ private:
                                    "Format","mimeType","Permissions"};
     const QStringList hiddenHeaderLabelList = {"name","type","length","lastModified",
                                    "format","mimeType","permissions"};
+
+    EasyBoolLock * recursivefileOpPending;
+    QDir recursiveLocalHead;
+    FileTreeNode * recursiveRemoteHead;
+    FileOp_RecursiveTask currentRecursiveTask = FileOp_RecursiveTask::NONE;
 };
 
 #endif // FILEOPERATOR_H

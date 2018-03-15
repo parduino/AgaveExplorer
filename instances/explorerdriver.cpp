@@ -34,8 +34,8 @@
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
 #include "explorerdriver.h"
-#include "explorerwindow.h"
 
+#include "explorerwindow.h"
 #include "utilFuncs/authform.h"
 #include "remoteFileOps/fileoperator.h"
 #include "remoteFileOps/joboperator.h"
@@ -43,16 +43,16 @@
 #include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
 #include "../AgaveClientInterface/agaveInterfaces/agavetaskreply.h"
 
+#include "../ae_globals.h"
+
 ExplorerDriver::ExplorerDriver(QObject *parent, bool debug) : AgaveSetupDriver(parent, debug)
 {
     AgaveHandler * tmpHandle = new AgaveHandler(this);
     tmpHandle->registerAgaveAppInfo("compress", "compress-0.1u1",{"directory", "compression_type"},{},"directory");
-    tmpHandle->registerAgaveAppInfo("extract", "extract-0.1u1",{"inputFile"},{},"");
-    tmpHandle->registerAgaveAppInfo("openfoam","openfoam-2.4.0u11",{"solver"},{"inputDirectory"},"inputDirectory");
+    tmpHandle->registerAgaveAppInfo("extract", "extract-0.1u1",{"inputFile"},{},"inputFile");
 
-    tmpHandle->registerAgaveAppInfo("cwe-mesh", "cwe-mesh-0.1.0", {"directory"}, {}, "directory");
-    tmpHandle->registerAgaveAppInfo("cwe-sim", "cwe-sim-2.4.0", {}, {"directory"}, "directory");
-    tmpHandle->registerAgaveAppInfo("cwe-post", "cwe-post-0.1.0", {"directory"}, {}, "directory");
+    tmpHandle->registerAgaveAppInfo("cwe-serial", "cwe-serial-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
+    tmpHandle->registerAgaveAppInfo("cwe-parallel", "cwe-parallel-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
 
     theConnector = (RemoteDataInterface *) tmpHandle;
     QObject::connect(theConnector, SIGNAL(sendFatalErrorMessage(QString)), this, SLOT(fatalInterfaceError(QString)));
@@ -65,7 +65,10 @@ ExplorerDriver::~ExplorerDriver()
 
 void ExplorerDriver::startup()
 {
+    myJobHandle = new JobOperator(this);
+    myFileHandle = new FileOperator(this);
     authWindow = new AuthForm(this);
+
     authWindow->show();
     QObject::connect(authWindow->windowHandle(),SIGNAL(visibleChanged(bool)),this, SLOT(subWindowHidden(bool)));
 
@@ -80,11 +83,8 @@ void ExplorerDriver::closeAuthScreen()
         return;
     }
 
-    myJobHandle = new JobOperator(theConnector,this);
     myJobHandle->demandJobDataRefresh();
-    myFileHandle = new FileOperator(theConnector,this);
     myFileHandle->resetFileData();
-
     mainWindow->startAndShow();
 
     //The dynamics of this may be different in windows. TODO: Find a more cross-platform solution

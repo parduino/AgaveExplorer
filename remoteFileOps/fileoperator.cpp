@@ -43,21 +43,22 @@
 #include "../AgaveClientInterface/remotedatainterface.h"
 
 #include "../utilFuncs/agavesetupdriver.h"
+#include "../ae_globals.h"
 
-FileOperator::FileOperator(RemoteDataInterface * newDataLink, AgaveSetupDriver *parent) : QObject( (QObject *)parent)
+FileOperator::FileOperator(AgaveSetupDriver *parent) : QObject( (QObject *)parent)
 {
-    dataLink = newDataLink;
-    myParent = parent;
-
     //Note: will be deconstructed with parent
     fileOpPending = new EasyBoolLock(this);
+}
+
+FileOperator::~FileOperator()
+{
+    delete rootFileNode;
 }
 
 void FileOperator::linkToFileTree(RemoteFileTree * newTreeLink)
 {
     newTreeLink->setModel(&dataStore);
-    QObject::connect(&dataStore, SIGNAL(dataChanged(QModelIndex,QModelIndex,QVector<int>)),
-                     newTreeLink, SLOT(fileEntryTouched(QModelIndex)));
 }
 
 void FileOperator::resetFileData()
@@ -70,9 +71,9 @@ void FileOperator::resetFileData()
     {
         rootFileNode->deleteLater();
     }
-    rootFileNode = new FileTreeNode(NULL, dataStore.invisibleRootItem());
+    rootFileNode = new FileTreeNode(&dataStore, ae_globals::get_connection()->getUserName(), this);
 
-    QObject::connect(rootFileNode, SIGNAL(fileSystemChanged()),
+    QObject::connect(rootFileNode, SIGNAL(fileDataChanged()),
                      this, SLOT(fileNodesChange()));
 
     enactRootRefresh();
@@ -81,7 +82,7 @@ void FileOperator::resetFileData()
 void FileOperator::totalResetErrorProcedure()
 {
     //TODO: Try to recover once by resetting all data on remote files
-    myParent->fatalInterfaceError("Critical Remote file parseing error. Unable to Recover");
+    ae_globals::displayFatalPopup("Critical Remote file parseing error. Unable to Recover");
 }
 
 QString FileOperator::getStringFromInitParams(QString stringKey)
@@ -90,13 +91,13 @@ QString FileOperator::getStringFromInitParams(QString stringKey)
     RemoteDataReply * theReply = qobject_cast<RemoteDataReply *> (QObject::sender());
     if (theReply == NULL)
     {
-        myParent->fatalInterfaceError("Unable to get sender object of reply signal");
+        ae_globals::displayFatalPopup("Unable to get sender object of reply signal");
         return ret;
     }
     ret = theReply->getTaskParamList()->value(stringKey);
     if (ret.isEmpty())
     {
-        myParent->fatalInterfaceError("Missing init param");
+        ae_globals::displayFatalPopup("Missing init param");
         return ret;
     }
     return ret;
@@ -105,7 +106,7 @@ QString FileOperator::getStringFromInitParams(QString stringKey)
 void FileOperator::enactRootRefresh()
 {
     qDebug("Enacting refresh of root.");
-    RemoteDataReply * theReply = dataLink->remoteLS("/");
+    RemoteDataReply * theReply = ae_globals::get_connection()->remoteLS("/");
     if (theReply == NULL)
     {
         //TODO: consider a more fatal error here
@@ -113,12 +114,16 @@ void FileOperator::enactRootRefresh()
         return;
     }
 
-    QObject::connect(theReply, SIGNAL(haveLSReply(RequestState,QList<FileMetaData>*)),
-                     this, SLOT(getLSReply(RequestState,QList<FileMetaData>*)));
+    rootFileNode->setLStask(theReply);
 }
 
 void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode, bool clearData)
 {
+    if (clearData)
+    {
+        selectedNode->deleteFolderContentsData();
+    }
+
     if (selectedNode->haveLStask())
     {
         return;
@@ -126,7 +131,7 @@ void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode, bool clearDat
     QString fullFilePath = selectedNode->getFileData().getFullPath();
 
     qDebug("File Path Needs refresh: %s", qPrintable(fullFilePath));
-    RemoteDataReply * theReply = dataLink->remoteLS(fullFilePath);
+    RemoteDataReply * theReply = ae_globals::get_connection()->remoteLS(fullFilePath);
     if (theReply == NULL)
     {
         //TODO: consider a more fatal error here
@@ -134,7 +139,7 @@ void FileOperator::enactFolderRefresh(FileTreeNode * selectedNode, bool clearDat
         return;
     }
 
-    selectedNode->setLStask(theReply, clearData);
+    selectedNode->setLStask(theReply);
 }
 
 bool FileOperator::operationIsPending()
@@ -148,7 +153,7 @@ void FileOperator::sendDeleteReq(FileTreeNode * selectedNode)
 
     QString targetFile = selectedNode->getFileData().getFullPath();
     qDebug("Starting delete procedure: %s",qPrintable(targetFile));
-    RemoteDataReply * theReply = dataLink->deleteFile(targetFile);
+    RemoteDataReply * theReply = ae_globals::get_connection()->deleteFile(targetFile);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -159,39 +164,23 @@ void FileOperator::sendDeleteReq(FileTreeNode * selectedNode)
                      this, SLOT(getDeleteReply(RequestState)));
 }
 
-void FileOperator::getLSReply(RequestState replyState,QList<FileMetaData> * newFileData)
-{
-    if (replyState != RequestState::GOOD)
-    {
-        return;
-    }
-
-    rootFileNode->updateFileFolder(newFileData);
-}
-
 void FileOperator::getDeleteReply(RequestState replyState)
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
-    {
-        return;
-    }
-
     lsClosestNodeToParent(getStringFromInitParams("toDelete"));
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendMoveReq(FileTreeNode * moveFrom, QString newName)
 {
     if (!fileOpPending->checkAndClaim()) return;
-    dataLink->setCurrentRemoteWorkingDirectory(moveFrom->getFileData().getContainingPath());
+    ae_globals::get_connection()->setCurrentRemoteWorkingDirectory(moveFrom->getFileData().getContainingPath());
 
     qDebug("Starting move procedure: %s to %s",
            qPrintable(moveFrom->getFileData().getFullPath()),
            qPrintable(newName));
-    RemoteDataReply * theReply = dataLink->moveFile(moveFrom->getFileData().getFullPath(), newName);
+    RemoteDataReply * theReply = ae_globals::get_connection()->moveFile(moveFrom->getFileData().getFullPath(), newName);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -205,26 +194,24 @@ void FileOperator::getMoveReply(RequestState replyState, FileMetaData * revisedF
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
+    if (replyState == RequestState::GOOD)
     {
-        return;
+        lsClosestNodeToParent(getStringFromInitParams("from"));
+        lsClosestNode(revisedFileData->getFullPath());
     }
 
-    lsClosestNodeToParent(getStringFromInitParams("from"));
-    lsClosestNode(revisedFileData->getFullPath());
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendCopyReq(FileTreeNode * copyFrom, QString newName)
 {
     if (!fileOpPending->checkAndClaim()) return;
-    dataLink->setCurrentRemoteWorkingDirectory(copyFrom->getFileData().getContainingPath());
+    ae_globals::get_connection()->setCurrentRemoteWorkingDirectory(copyFrom->getFileData().getContainingPath());
 
     qDebug("Starting copy procedure: %s to %s",
            qPrintable(copyFrom->getFileData().getFullPath()),
            qPrintable(newName));
-    RemoteDataReply * theReply = dataLink->copyFile(copyFrom->getFileData().getFullPath(), newName);
+    RemoteDataReply * theReply = ae_globals::get_connection()->copyFile(copyFrom->getFileData().getFullPath(), newName);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -238,14 +225,12 @@ void FileOperator::getCopyReply(RequestState replyState, FileMetaData * newFileD
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
+    if (replyState == RequestState::GOOD)
     {
-        return;
+        lsClosestNode(newFileData->getFullPath());
     }
 
-    lsClosestNode(newFileData->getFullPath());
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendRenameReq(FileTreeNode * selectedNode, QString newName)
@@ -255,7 +240,7 @@ void FileOperator::sendRenameReq(FileTreeNode * selectedNode, QString newName)
     qDebug("Starting rename procedure: %s to %s",
            qPrintable(selectedNode->getFileData().getFullPath()),
            qPrintable(newName));
-    RemoteDataReply * theReply = dataLink->renameFile(selectedNode->getFileData().getFullPath(), newName);
+    RemoteDataReply * theReply = ae_globals::get_connection()->renameFile(selectedNode->getFileData().getFullPath(), newName);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -269,15 +254,13 @@ void FileOperator::getRenameReply(RequestState replyState, FileMetaData * newFil
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
+    if (replyState == RequestState::GOOD)
     {
-        return;
+        lsClosestNodeToParent(getStringFromInitParams("fullName"));
+        lsClosestNodeToParent(newFileData->getFullPath());
     }
 
-    lsClosestNodeToParent(getStringFromInitParams("fullName"));
-    lsClosestNodeToParent(newFileData->getFullPath());
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendCreateFolderReq(FileTreeNode * selectedNode, QString newName)
@@ -287,7 +270,7 @@ void FileOperator::sendCreateFolderReq(FileTreeNode * selectedNode, QString newN
     qDebug("Starting create folder procedure: %s at %s",
            qPrintable(selectedNode->getFileData().getFullPath()),
            qPrintable(newName));
-    RemoteDataReply * theReply = dataLink->mkRemoteDir(selectedNode->getFileData().getFullPath(), newName);
+    RemoteDataReply * theReply = ae_globals::get_connection()->mkRemoteDir(selectedNode->getFileData().getFullPath(), newName);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -302,14 +285,12 @@ void FileOperator::getMkdirReply(RequestState replyState, FileMetaData * newFold
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
+    if (replyState == RequestState::GOOD)
     {
-        return;
+        lsClosestNode(newFolderData->getContainingPath());
     }
 
-    lsClosestNode(newFolderData->getContainingPath());
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendUploadReq(FileTreeNode * uploadTarget, QString localFile)
@@ -317,7 +298,7 @@ void FileOperator::sendUploadReq(FileTreeNode * uploadTarget, QString localFile)
     if (!fileOpPending->checkAndClaim()) return;
     qDebug("Starting upload procedure: %s to %s", qPrintable(localFile),
            qPrintable(uploadTarget->getFileData().getFullPath()));
-    RemoteDataReply * theReply = dataLink->uploadFile(uploadTarget->getFileData().getFullPath(), localFile);
+    RemoteDataReply * theReply = ae_globals::get_connection()->uploadFile(uploadTarget->getFileData().getFullPath(), localFile);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -331,7 +312,7 @@ void FileOperator::sendUploadBuffReq(FileTreeNode * uploadTarget, QByteArray fil
 {
     if (!fileOpPending->checkAndClaim()) return;
     qDebug("Starting upload procedure: to %s", qPrintable(uploadTarget->getFileData().getFullPath()));
-    RemoteDataReply * theReply = dataLink->uploadBuffer(uploadTarget->getFileData().getFullPath(), fileBuff, newName);
+    RemoteDataReply * theReply = ae_globals::get_connection()->uploadBuffer(uploadTarget->getFileData().getFullPath(), fileBuff, newName);
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -345,14 +326,12 @@ void FileOperator::getUploadReply(RequestState replyState, FileMetaData * newFil
 {
     fileOpPending->release();
 
-    emit fileOpDone(replyState);
-
-    if (replyState != RequestState::GOOD)
+    if (replyState == RequestState::GOOD)
     {
-        return;
+        lsClosestNodeToParent(newFileData->getFullPath());
     }
 
-    lsClosestNode(newFileData->getFullPath());
+    emit fileOpDone(replyState);
 }
 
 void FileOperator::sendDownloadReq(FileTreeNode * targetFile, QString localDest)
@@ -360,7 +339,7 @@ void FileOperator::sendDownloadReq(FileTreeNode * targetFile, QString localDest)
     if (!fileOpPending->checkAndClaim()) return;
     qDebug("Starting download procedure: %s to %s", qPrintable(targetFile->getFileData().getFullPath()),
            qPrintable(localDest));
-    RemoteDataReply * theReply = dataLink->downloadFile(localDest, targetFile->getFileData().getFullPath());
+    RemoteDataReply * theReply = ae_globals::get_connection()->downloadFile(localDest, targetFile->getFileData().getFullPath());
     if (theReply == NULL)
     {
         fileOpPending->release();
@@ -393,13 +372,158 @@ void FileOperator::sendDownloadBuffReq(FileTreeNode * targetFile)
         return;
     }
     qDebug("Starting download buffer procedure: %s", qPrintable(targetFile->getFileData().getFullPath()));
-    RemoteDataReply * theReply = dataLink->downloadBuffer(targetFile->getFileData().getFullPath());
+    RemoteDataReply * theReply = ae_globals::get_connection()->downloadBuffer(targetFile->getFileData().getFullPath());
     if (theReply == NULL)
     {
-        fileOpPending->release();
         return;
     }
     targetFile->setBuffTask(theReply);
+}
+
+bool FileOperator::performingRecursiveDownload()
+{
+    return (currentRecursiveTask == FileOp_RecursiveTask::DOWNLOAD);
+}
+
+void FileOperator::enactRecursiveDownload(FileTreeNode * targetFolder, QString containingDestFolder)
+{
+    if (!fileOpPending->checkAndClaim()) return;
+    if (currentRecursiveTask != FileOp_RecursiveTask::NONE) return;
+
+    if (!targetFolder->isFolder())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Only folders can be downloaded recursively.");
+        return;
+    }
+
+    QDir downloadParent(containingDestFolder);
+
+    if (!downloadParent.exists())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Download destination does not exist.");
+        return;
+    }
+
+    if (downloadParent.exists(targetFolder->getFileData().getFileName()))
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Download destination already occupied.");
+        return;
+    }
+
+    if (!downloadParent.mkdir(targetFolder->getFileData().getFileName()))
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Unable to create local destination for download, please check that you have permissions to write to the specified folder.");
+        return;
+    }
+    recursiveLocalHead = downloadParent;
+    if (!recursiveLocalHead.cd(targetFolder->getFileData().getFileName()))
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Unable to create local destination for download, please check that you have permissions to write to the specified folder.");
+        return;
+    }
+
+    recursiveRemoteHead = targetFolder;
+    currentRecursiveTask = FileOp_RecursiveTask::DOWNLOAD;
+    recursiveDownloadProcessRetry();
+}
+
+bool FileOperator::performingRecursiveUpload()
+{
+    return (currentRecursiveTask == FileOp_RecursiveTask::UPLOAD);
+}
+
+void FileOperator::enactRecursiveUpload(FileTreeNode * containingDestFolder, QString localFolderToCopy)
+{
+    if (!fileOpPending->checkAndClaim()) return;
+    if (currentRecursiveTask != FileOp_RecursiveTask::NONE) return;
+
+    if (recursivefileOpPending->lockClosed())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Still cleaning up tasks from last upload attempt. Please Wait.");
+        return;
+    }
+
+    recursiveLocalHead = QDir(localFolderToCopy);
+    if (!recursiveLocalHead.exists())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: The folder to upload does not exist.");
+        return;
+    }
+
+    if (!recursiveLocalHead.isReadable())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Unable to read from local folder to upload, please check that you have permissions to read the specified folder.");
+        return;
+    }
+
+    if (recursiveLocalHead.dirName().isEmpty())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Cannot upload unnamed or root folders.");
+        return;
+    }
+
+    if (!containingDestFolder->isFolder())
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: The destination for an upload must be a folder.");
+        return;
+    }
+
+    if (containingDestFolder->getNodeState() != NodeState::FOLDER_CONTENTS_LOADED)
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: The destination for an upload must be fully loaded.");
+        return;
+    }
+
+    if (containingDestFolder->getChildNodeWithName(recursiveLocalHead.dirName()) != NULL)
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: The destination for the upload is already occupied.");
+        return;
+    }
+
+    speculateNodeWithName(recursiveRemoteHead, recursiveLocalHead.dirName(), true);
+
+    recursiveRemoteHead = containingDestFolder->getChildNodeWithName(recursiveLocalHead.dirName());
+    if (recursiveRemoteHead == NULL)
+    {
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Internal Error, please consult developers to fix this.");
+        return;
+    }
+
+    currentRecursiveTask = FileOp_RecursiveTask::UPLOAD;
+    recursiveUploadProcessRetry();
+}
+
+void FileOperator::abortRecursiveProcess()
+{
+    QString toDisplay = "Internal ERROR";
+    if (currentRecursiveTask == FileOp_RecursiveTask::NONE) return;
+
+    if (currentRecursiveTask == FileOp_RecursiveTask::DOWNLOAD)
+    {
+        toDisplay = "Folder download stopped by user.";
+    }
+    else if (currentRecursiveTask == FileOp_RecursiveTask::UPLOAD)
+    {
+        toDisplay = "Folder upload stopped by user.";
+    }
+
+    currentRecursiveTask = FileOp_RecursiveTask::NONE;
+    fileOpPending->release();
+    emit recursiveProcessFinished(false, toDisplay);
+    return;
 }
 
 void FileOperator::sendCompressReq(FileTreeNode * selectedFolder)
@@ -415,7 +539,7 @@ void FileOperator::sendCompressReq(FileTreeNode * selectedFolder)
         //TODO: give reasonable error
         return;
     }
-    RemoteDataReply * compressTask = dataLink->runRemoteJob("compress",oneInput,fileData.getFullPath());
+    RemoteDataReply * compressTask = ae_globals::get_connection()->runRemoteJob("compress",oneInput,fileData.getFullPath());
     if (compressTask == NULL)
     {
         fileOpPending->release();
@@ -430,15 +554,13 @@ void FileOperator::getCompressReply(RequestState finalState, QJsonDocument *)
 {
     fileOpPending->release();
 
+    //TODO: ask for refresh of relevant containing folder, after finishing job
     emit fileOpDone(finalState);
 
     if (finalState != RequestState::GOOD)
     {
         //TODO: give reasonable error
-        return;
     }
-
-    //TODO: ask for refresh of relevant containing folder
 }
 
 void FileOperator::sendDecompressReq(FileTreeNode * selectedFolder)
@@ -455,7 +577,7 @@ void FileOperator::sendDecompressReq(FileTreeNode * selectedFolder)
     }
     oneInput.insert("inputFile",fileData.getFullPath());
 
-    RemoteDataReply * decompressTask = dataLink->runRemoteJob("extract",oneInput,"");
+    RemoteDataReply * decompressTask = ae_globals::get_connection()->runRemoteJob("extract",oneInput,"");
     if (decompressTask == NULL)
     {
         fileOpPending->release();
@@ -470,29 +592,80 @@ void FileOperator::getDecompressReply(RequestState finalState, QJsonDocument *)
 {
     fileOpPending->release();
 
+    //TODO: ask for refresh of relevant containing folder, after finishing job
     emit fileOpDone(finalState);
 
     if (finalState != RequestState::GOOD)
     {
         //TODO: give reasonable error
-        return;
     }
-
-    //TODO: ask for refresh of relevant containing folder
 }
 
 void FileOperator::fileNodesChange()
 {
     emit fileSystemChange();
+
+    if (performingRecursiveDownload())
+    {
+        recursiveDownloadProcessRetry();
+    }
+    else if (performingRecursiveUpload())
+    {
+        recursiveUploadProcessRetry();
+    }
 }
 
-void FileOperator::lsClosestNode(QString fullPath)
+void FileOperator::getRecursiveUploadReply(RequestState replyState, FileMetaData * newFileData)
+{
+    recursivefileOpPending->release();
+
+    if (replyState == RequestState::NO_CONNECT)
+    {
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Network connection lost during folder upload.");
+        return;
+    }
+
+    if (replyState != RequestState::GOOD)
+    {
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Folder upload failed to upload file.");
+        return;
+    }
+    lsClosestNodeToParent(newFileData->getFullPath());
+}
+
+void FileOperator::getRecursiveMkdirReply(RequestState replyState, FileMetaData * newFolderData)
+{
+    recursivefileOpPending->release();
+
+    if (replyState == RequestState::NO_CONNECT)
+    {
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Network connection lost during folder upload.");
+        return;
+    }
+
+    if (replyState != RequestState::GOOD)
+    {
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(false, "ERROR: Folder upload failed to create new remote folder.");
+        return;
+    }
+    lsClosestNode(newFolderData->getContainingPath());
+}
+
+void FileOperator::lsClosestNode(QString fullPath, bool clearData)
 {
     FileTreeNode * nodeToRefresh = rootFileNode->getClosestNodeWithName(fullPath);
-    enactFolderRefresh(nodeToRefresh);
+    enactFolderRefresh(nodeToRefresh, clearData);
 }
 
-void FileOperator::lsClosestNodeToParent(QString fullPath)
+void FileOperator::lsClosestNodeToParent(QString fullPath, bool clearData)
 {
     FileTreeNode * nodeToRefresh = rootFileNode->getNodeWithName(fullPath);
     if (nodeToRefresh != NULL)
@@ -501,42 +674,12 @@ void FileOperator::lsClosestNodeToParent(QString fullPath)
         {
             nodeToRefresh = nodeToRefresh->getParentNode();
         }
-        enactFolderRefresh(nodeToRefresh);
+        enactFolderRefresh(nodeToRefresh, clearData);
         return;
     }
 
     nodeToRefresh = rootFileNode->getClosestNodeWithName(fullPath);
     enactFolderRefresh(nodeToRefresh);
-}
-
-FileTreeNode * FileOperator::getNodeFromModel(QStandardItem * toFind)
-{
-    QStandardItem * findParent = toFind->parent();
-    if (findParent == NULL)
-    {
-        findParent = dataStore.invisibleRootItem();
-    }
-
-    int colNum = toFind->column();
-    if (colNum != 0)
-    {
-        toFind = findParent->child(toFind->row(), 0);
-    }
-    QString realPath;
-    while (toFind != NULL)
-    {
-        realPath = realPath.prepend(toFind->text());
-        realPath = realPath.prepend("/");
-
-        toFind = toFind->parent();
-    }
-    return rootFileNode->getNodeWithName(realPath);
-}
-
-FileTreeNode * FileOperator::getNodeFromIndex(QModelIndex fileIndex)
-{
-    QStandardItem * theModelItem = dataStore.itemFromIndex(fileIndex);
-    return getNodeFromModel(theModelItem);
 }
 
 FileTreeNode * FileOperator::getNodeFromName(QString fullPath)
@@ -547,6 +690,95 @@ FileTreeNode * FileOperator::getNodeFromName(QString fullPath)
 FileTreeNode * FileOperator::getClosestNodeFromName(QString fullPath)
 {
     return rootFileNode->getClosestNodeWithName(fullPath);
+}
+
+FileTreeNode * FileOperator::speculateNodeWithName(QString fullPath, bool folder)
+{
+    FileTreeNode * scanNode = rootFileNode->getNodeWithName(fullPath);
+    if (scanNode != NULL)
+    {
+        return scanNode;
+    }
+    scanNode = rootFileNode->getClosestNodeWithName(fullPath);
+    if (scanNode == NULL)
+    {
+        return NULL;
+    }
+    QStringList fullPathParts = FileMetaData::getPathNameList(fullPath);
+    QStringList scanPathParts = FileMetaData::getPathNameList(scanNode->getFileData().getFullPath());
+
+    int accountedParts = scanPathParts.size();
+    QString pathSoFar = "";
+
+    for (auto itr = fullPathParts.cbegin(); itr != fullPathParts.cend(); itr++)
+    {
+        if (accountedParts <= 0)
+        {
+            pathSoFar = pathSoFar.append("/");
+            pathSoFar = pathSoFar.append(*itr);
+        }
+        else
+        {
+            accountedParts--;
+        }
+    }
+    return speculateNodeWithName(scanNode, pathSoFar, folder);
+}
+
+FileTreeNode * FileOperator::speculateNodeWithName(FileTreeNode * baseNode, QString addedPath, bool folder)
+{
+    FileTreeNode * searchNode = baseNode;
+    QStringList pathParts = FileMetaData::getPathNameList(addedPath);
+    for (auto itr = pathParts.cbegin(); itr != pathParts.cend(); itr++)
+    {
+        FileTreeNode * nextNode = searchNode->getChildNodeWithName(*itr);
+        if (nextNode != NULL)
+        {
+            searchNode = nextNode;
+            continue;
+        }
+        if (!searchNode->isFolder())
+        {
+            qDebug("Invalid file speculation path.");
+            return NULL;
+        }
+        if (searchNode->getNodeState() == NodeState::FOLDER_CONTENTS_LOADED)
+        {
+            //Speculation failed, file known not to exist
+            return NULL;
+        }
+
+        FileMetaData newFolderData;
+        QString newPath = searchNode->getFileData().getFullPath();
+        newPath = newPath.append("/");
+        newPath = newPath.append(*itr);
+        newFolderData.setFullFilePath(newPath);
+        newFolderData.setType(FileType::DIR);
+        if ((itr + 1 == pathParts.cend()) && (folder == false))
+        {
+            newFolderData.setType(FileType::FILE);
+        }
+        newFolderData.setSize(0);
+        nextNode = new FileTreeNode(newFolderData, searchNode);
+        if ((searchNode->getNodeState() == NodeState::FOLDER_KNOWN_CONTENTS_NOT) ||
+               (searchNode->getNodeState() == NodeState::FOLDER_SPECULATE_IDLE))
+        {
+            enactFolderRefresh(searchNode);
+        }
+
+        searchNode = nextNode;
+    }
+
+    if (folder)
+    {
+        enactFolderRefresh(searchNode);
+    }
+    else
+    {
+        sendDownloadBuffReq(searchNode);
+    }
+
+    return searchNode;
 }
 
 void FileOperator::quickInfoPopup(QString infoText)
@@ -572,4 +804,252 @@ bool FileOperator::deletePopup(FileTreeNode * toDelete)
           return false;
     }
     return false;
+}
+
+void FileOperator::recursiveDownloadProcessRetry()
+{
+    if (recursiveDownloadRetrivalHelper(recursiveRemoteHead))
+    {
+        QString outText = "INTERNAL ERROR";
+        RecursiveErrorCodes errNum = RecursiveErrorCodes::NONE;
+        bool success = recursiveDownloadFolderEmitHelper(recursiveLocalHead, recursiveRemoteHead, errNum);
+        if (success)
+        {
+            outText = "Remote folder downloaded.";
+        }
+        else
+        {
+            if (errNum == RecursiveErrorCodes::LOST_FILE)
+            {
+                outText = "Internal Error: File entry missing in downloaded data. Files may have changed outside of program.";
+            }
+            else if (errNum == RecursiveErrorCodes::TYPE_MISSMATCH)
+            {
+                outText = "Internal Error: Type Mismatch in downloaded data. Files may have changed outside of program.";
+            }
+            else
+            {
+                outText = "ERROR: Unable to write local files for download, please check that you have permissions to write to the specified folder.";
+            }
+        }
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(success, outText);
+        return;
+    }
+}
+
+bool FileOperator::recursiveDownloadRetrivalHelper(FileTreeNode * nodeToCheck)
+{
+    if (nodeToCheck->isFile())
+    {
+        if (nodeToCheck->getFileBuffer() == NULL)
+        {
+            sendDownloadBuffReq(nodeToCheck);
+            return false;
+        }
+        return true;
+    }
+
+    if (!nodeToCheck->isFolder()) return true; //For now, we only copy files and folders
+
+    bool foundAll = true;
+
+    if (nodeToCheck->getNodeState() != NodeState::FOLDER_CONTENTS_LOADED)
+    {
+        foundAll = false;
+        enactFolderRefresh(nodeToCheck);
+    }
+
+    for (FileTreeNode * aChild : nodeToCheck->getChildList())
+    {
+        if (!recursiveDownloadRetrivalHelper(aChild))
+        {
+            foundAll = false;
+        }
+    }
+
+    return foundAll;
+}
+
+bool FileOperator::recursiveDownloadFolderEmitHelper(QDir currentLocalDir, FileTreeNode *nodeToGet, RecursiveErrorCodes &errNum)
+{
+    if (!nodeToGet->isFolder())
+    {
+        errNum = RecursiveErrorCodes::TYPE_MISSMATCH;
+        return false;
+    }
+    if (!currentLocalDir.exists())
+    {
+        errNum = RecursiveErrorCodes::LOST_FILE;
+        return false;
+    }
+    for (FileTreeNode * aChild : nodeToGet->getChildList())
+    {
+        if (aChild->getFileData().getFileType() == FileType::DIR)
+        {
+            if (!currentLocalDir.mkdir(aChild->getFileData().getFileName())) return false;
+            QDir newFolder = currentLocalDir;
+            newFolder.cd(aChild->getFileData().getFileName());
+            if (!newFolder.exists()) return false;
+            if (!recursiveDownloadFolderEmitHelper(newFolder, aChild, errNum)) return false;
+        }
+        else if (aChild->getFileData().getFileType() == FileType::FILE)
+        {
+            if (!emitBufferToFile(currentLocalDir, aChild, errNum)) return false;
+        }
+    }
+
+    return true;
+}
+
+bool FileOperator::emitBufferToFile(QDir containingDir, FileTreeNode * nodeToGet, RecursiveErrorCodes &errNum)
+{
+    if (!nodeToGet->isFile())
+    {
+        errNum = RecursiveErrorCodes::TYPE_MISSMATCH;
+        return false;
+    }
+
+    if (!containingDir.exists())
+    {
+        errNum = RecursiveErrorCodes::LOST_FILE;
+        return false;
+    }
+
+    if (containingDir.exists(nodeToGet->getFileData().getFileName())) return false;
+
+    QFile newFile(containingDir.absoluteFilePath(nodeToGet->getFileData().getFileName()));
+    if (nodeToGet->getFileBuffer() == NULL) return false;
+    if (!newFile.open(QFile::WriteOnly)) return false;
+    if (newFile.write(*(nodeToGet->getFileBuffer())) < 0) return false;
+    newFile.close();
+
+    return true;
+}
+
+void FileOperator::recursiveUploadProcessRetry()
+{
+    if (recursivefileOpPending->lockClosed()) return;
+
+    RecursiveErrorCodes theError = RecursiveErrorCodes::NONE;
+
+    if (recursiveUploadHelper(recursiveRemoteHead, recursiveLocalHead, theError))
+    {
+        currentRecursiveTask = FileOp_RecursiveTask::NONE;
+        fileOpPending->release();
+        emit recursiveProcessFinished(true, "Folder uploaded.");
+        return;
+    }
+
+    if (theError == RecursiveErrorCodes::NONE) return;
+
+    currentRecursiveTask = FileOp_RecursiveTask::NONE;
+    fileOpPending->release();
+    if (theError == RecursiveErrorCodes::MKDIR_FAIL)
+    {
+        emit recursiveProcessFinished(true, "Create folder operation failed during recursive upload. Check your network connection and try again.");
+        return;
+    }
+
+    if (theError == RecursiveErrorCodes::UPLOAD_FAIL)
+    {
+        emit recursiveProcessFinished(true, "File upload operation failed during recursive upload. Check your network connection and try again.");
+        return;
+    }
+
+    if (theError == RecursiveErrorCodes::TYPE_MISSMATCH)
+    {
+        emit recursiveProcessFinished(true, "Internal error. File type mismatch. Remote files may be being accessed outside of this program.");
+        return;
+    }
+}
+
+bool FileOperator::recursiveUploadHelper(FileTreeNode * nodeToSend, QDir localPath, RecursiveErrorCodes &errNum)
+{
+    errNum = RecursiveErrorCodes::NONE;
+    if (recursivefileOpPending->lockClosed()) return false;
+
+    if (!nodeToSend->isFolder())
+    {
+        errNum = RecursiveErrorCodes::TYPE_MISSMATCH;
+        return false;
+    }
+
+    if (nodeToSend->getNodeState() != NodeState::FOLDER_CONTENTS_LOADED)
+    {
+        enactFolderRefresh(nodeToSend);
+        return false;
+    }
+
+    for (QFileInfo anEntry : localPath.entryInfoList())
+    {
+        if (anEntry.isDir())
+        {
+            QDir childDir = anEntry.dir();
+            FileTreeNode * childNode = nodeToSend->getChildNodeWithName(childDir.dirName());
+            if (childNode == NULL)
+            {
+                if (!sendRecursiveCreateFolderReq(nodeToSend, childDir.dirName()))
+                {
+                    errNum = RecursiveErrorCodes::MKDIR_FAIL;
+                }
+                return false;
+            }
+            if (!recursiveUploadHelper(childNode, childDir, errNum)) return false;
+        }
+        else if (anEntry.isFile())
+        {
+            FileTreeNode * childNode = nodeToSend->getChildNodeWithName(anEntry.fileName());
+            if (childNode == NULL)
+            {
+                if (!sendRecursiveUploadReq(nodeToSend, anEntry.absoluteFilePath()))
+                {
+                    errNum = RecursiveErrorCodes::UPLOAD_FAIL;
+                }
+                return false;
+            }
+            if (!childNode->isFile())
+            {
+                errNum = RecursiveErrorCodes::TYPE_MISSMATCH;
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool FileOperator::sendRecursiveCreateFolderReq(FileTreeNode * selectedNode, QString newName)
+{
+    if (!recursivefileOpPending->checkAndClaim()) return false;
+
+    qDebug("Starting Recursive mkdir procedure: %s at %s",
+           qPrintable(selectedNode->getFileData().getFullPath()),
+           qPrintable(newName));
+    RemoteDataReply * theReply = ae_globals::get_connection()->mkRemoteDir(selectedNode->getFileData().getFullPath(), newName);
+    if (theReply == NULL)
+    {
+        recursivefileOpPending->release();
+        return false;
+    }
+    QObject::connect(theReply, SIGNAL(haveMkdirReply(RequestState,FileMetaData*)),
+                     this, SLOT(getRecursiveMkdirReply(RequestState,FileMetaData*)));
+    return true;
+}
+
+bool FileOperator::sendRecursiveUploadReq(FileTreeNode * uploadTarget, QString localFile)
+{
+    if (!recursivefileOpPending->checkAndClaim()) return false;
+    qDebug("Starting recursively enacted upload procedure: %s to %s", qPrintable(localFile),
+           qPrintable(uploadTarget->getFileData().getFullPath()));
+    RemoteDataReply * theReply = ae_globals::get_connection()->uploadFile(uploadTarget->getFileData().getFullPath(), localFile);
+    if (theReply == NULL)
+    {
+        recursivefileOpPending->release();
+        return false;
+    }
+    QObject::connect(theReply, SIGNAL(haveUploadReply(RequestState,FileMetaData*)),
+                     this, SLOT(getRecursiveUploadReply(RequestState,FileMetaData*)));
+    return true;
 }

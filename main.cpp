@@ -34,14 +34,12 @@
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
 #include <QApplication>
-#include <QObject>
 #include <QtGlobal>
 #include <QFile>
-
 #include <QSslSocket>
 
-#include "instances/explorerwindow.h"
 #include "instances/explorerdriver.h"
+#include "../AgaveClientInterface/remotedatainterface.h"
 
 void emptyMessageHandler(QtMsgType, const QMessageLogContext &, const QString &){}
 
@@ -49,11 +47,16 @@ int main(int argc, char *argv[])
 {
     QApplication mainRunLoop(argc, argv);
     bool debugLoggingEnabled = false;
+    bool logRawOutput = false;
     for (int i = 0; i < argc; i++)
     {
         if (strcmp(argv[i],"enableDebugLogging") == 0)
         {
             debugLoggingEnabled = true;
+        }
+        if (strcmp(argv[i],"logRawOutput") == 0)
+        {
+            logRawOutput = true;
         }
     }
 
@@ -65,7 +68,6 @@ int main(int argc, char *argv[])
     {
         qInstallMessageHandler(emptyMessageHandler);
     }
-
 
     ExplorerDriver programDriver(NULL, debugLoggingEnabled);
 
@@ -83,6 +85,12 @@ int main(int argc, char *argv[])
     if (QSslSocket::supportsSsl() == false)
     {
         programDriver.fatalInterfaceError("SSL support was not detected on this computer.\nPlease insure that some version of SSL is installed,\n such as by installing OpenSSL.\nInstalling a web browser will probably also work.");
+    }
+
+    if (debugLoggingEnabled && logRawOutput)
+    {
+        qDebug("NOTE: Debugging text including raw remote output.");
+        programDriver.getDataConnection()->setRawDebugOutput(true);
     }
 
     programDriver.startup();

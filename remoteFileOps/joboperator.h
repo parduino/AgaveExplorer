@@ -37,18 +37,15 @@
 #define JOBOPERATOR_H
 
 #include <QObject>
-#include <QList>
-#include <QListView>
+#include <QMap>
 #include <QStandardItemModel>
-#include <QString>
-
 #include <QTimer>
 
 class RemoteFileWindow;
 class RemoteDataInterface;
 class RemoteJobLister;
 class RemoteJobData;
-class RemoteJobEntry;
+class JobListNode;
 class RemoteDataReply;
 
 enum class RequestState;
@@ -57,12 +54,16 @@ class JobOperator : public QObject
 {
     Q_OBJECT
 public:
-    explicit JobOperator(RemoteDataInterface * newDataLink, QObject * parent);
+    explicit JobOperator(QObject * parent);
+    ~JobOperator();
     void linkToJobLister(RemoteJobLister * newLister);
 
-    QMap<QString, RemoteJobData> getRunningJobs();
+    QMap<QString, const RemoteJobData *> getRunningJobs();
 
-    void requestJobDetails(RemoteJobData * toFetch);
+    void requestJobDetails(const RemoteJobData *toFetch);
+    void underlyingJobChanged();
+
+    const RemoteJobData * findJobByID(QString idToFind);
 
 signals:
     void newJobData();
@@ -72,11 +73,9 @@ public slots:
 
 private slots:
     void refreshRunningJobList(RequestState replyState, QList<RemoteJobData> *theData);
-    void refreshRunningJobDetails(RequestState replyState, RemoteJobData *theData);
 
 private:
-    QMap<QString, RemoteJobEntry *> jobData;
-    RemoteDataInterface * dataLink;
+    QMap<QString, JobListNode *> jobData;
     RemoteDataReply * currentJobReply = NULL;
 
     QStandardItemModel theJobList;

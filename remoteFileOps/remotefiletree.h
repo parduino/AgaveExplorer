@@ -36,18 +36,7 @@
 #ifndef REMOTEFILEWINDOW_H
 #define REMOTEFILEWINDOW_H
 
-#include <QMainWindow>
-#include <QtGlobal>
 #include <QTreeView>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QObject>
-#include <QLabel>
-#include <QPoint>
-#include <QMenu>
-#include <QCursor>
-#include <QStandardItem>
-#include <QModelIndexList>
 
 //NOTE: FILENAME MUST == 0 for these functions to work.
 //The other columns can be changed
@@ -71,10 +60,6 @@ class RemoteFileTree : public QTreeView
 public:
     explicit RemoteFileTree(QWidget *parent = 0);
 
-    void setFileOperator(FileOperator * theOperator);
-    FileOperator * getFileOperator();
-
-    void refreshSelection();
     FileTreeNode * getSelectedNode();
     void setupFileView();
 
@@ -87,9 +72,6 @@ public slots:
 
 private slots:
     void folderExpanded(QModelIndex itemOpened);
-
-private:
-    FileOperator * myFileOperator;
 };
 
 #endif // REMOTEFILEWINDOW_H

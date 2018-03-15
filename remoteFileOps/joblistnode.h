@@ -39,25 +39,40 @@
 #include <QObject>
 #include <QStandardItem>
 
+class LinkedStandardItem;
+class RemoteDataReply;
+class JobOperator;
+enum class RequestState;
+
 #include "../AgaveClientInterface/remotejobdata.h"
 
-class RemoteJobEntry : public QObject
+class JobListNode : public QObject
 {
     Q_OBJECT
 public:
-    explicit RemoteJobEntry(RemoteJobData newData, QStandardItem * modelParent, QObject *parent = nullptr);
+    explicit JobListNode(RemoteJobData newData, QStandardItemModel * theModel, JobOperator *parent = nullptr);
+    ~JobListNode();
 
     void setData(RemoteJobData newData);
-    RemoteJobData getData();
+    const RemoteJobData * getData();
+    bool haveDetails();
     void setDetails(QMap<QString, QString> inputs, QMap<QString, QString> params);
 
+    bool haveDetailTask();
+    void setDetailTask(RemoteDataReply * newTask);
+
 signals:
-    void jobStateChanged(RemoteJobData * jobData);
+    void jobDataChanged(JobListNode * theNode);
+
+private slots:
+    void deliverJobDetails(RequestState taskState, RemoteJobData * fullJobData);
 
 private:
-    QStandardItem * modelParentNode = NULL;
-    QStandardItem * myModelNode = NULL;
+    QStandardItemModel * myModel = NULL;
+    LinkedStandardItem * myModelItem = NULL;
     RemoteJobData myData;
+
+    RemoteDataReply * myDetailTask = NULL;
 };
 
 #endif // REMOTEJOBENTRY_H

@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,59 +33,41 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#include "remotejobentry.h"
+#ifndef AE_GLOBALS_H
+#define AE_GLOBALS_H
 
-#include "../AgaveClientInterface/remotejobdata.h"
+#include <QString>
+#include <QMessageBox>
+#include <QCoreApplication>
 
-RemoteJobEntry::RemoteJobEntry(RemoteJobData newData, QStandardItem * modelParent, QObject *parent) : QObject(parent)
+class AgaveSetupDriver;
+class RemoteDataInterface;
+class FileOperator;
+class JobOperator;
+
+class ae_globals
 {
-    modelParentNode = modelParent;
-    setData(newData);
-}
+public:
+    ae_globals();
 
-void RemoteJobEntry::setData(RemoteJobData newData)
-{
-    bool signalChange = false;
-    if ((newData.getState() != myData.getState()) && (myData.getState() != "APP_INIT"))
-    {
-        signalChange = true;
-    }
-    myData = newData;
+    static void displayFatalPopup(QString message, QString header);
+    static void displayFatalPopup(QString message);
 
-    if (myModelNode == NULL)
-    {
-        QList<QStandardItem *> newRow;
-        myModelNode = new QStandardItem(myData.getName());
-        newRow.append(myModelNode);
-        newRow.append(new QStandardItem(myData.getState()));
-        newRow.append(new QStandardItem(myData.getApp()));
-        newRow.append(new QStandardItem(myData.getTimeCreated().toString()));
-        newRow.append(new QStandardItem(myData.getID()));
-        modelParentNode->insertRow(0,newRow);
-    }
-    else
-    {
-        int rowNum = myModelNode->row();
+    static void displayPopup(QString message, QString header);
+    static void displayPopup(QString message);
 
-        modelParentNode->child(rowNum,0)->setText(myData.getName());
-        modelParentNode->child(rowNum,1)->setText(myData.getState());
-        modelParentNode->child(rowNum,2)->setText(myData.getApp());
-        modelParentNode->child(rowNum,3)->setText(myData.getTimeCreated().toString());
-        modelParentNode->child(rowNum,4)->setText(myData.getID());
-    }
+    static bool isValidFolderName(QString folderName);
+    static bool isValidLocalFolder(QString folderName);
 
-    if (signalChange)
-    {
-        emit jobStateChanged(&myData);
-    }
-}
+    static AgaveSetupDriver * get_Driver();
+    static void set_Driver(AgaveSetupDriver * newDriver);
 
-RemoteJobData RemoteJobEntry::getData()
-{
-    return myData;
-}
+    static RemoteDataInterface * get_connection();
+    static JobOperator * get_job_handle();
+    static FileOperator * get_file_handle();
 
-void RemoteJobEntry::setDetails(QMap<QString, QString> inputs, QMap<QString, QString> params)
-{
-    myData.setDetails(inputs, params);
-}
+private:    
+    static AgaveSetupDriver * theDriver;
+};
+
+#endif // AE_GLOBALS_H
