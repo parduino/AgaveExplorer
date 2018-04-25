@@ -57,7 +57,11 @@ HeaderWidget::HeaderWidget(QWidget *parent)
     leftLayout->setAlignment(Qt::AlignLeft); //can this be done in CSS???
     leftLayout->addWidget(titleText);
 
-    subLayout->setAlignment(Qt::AlignRight);
+//    commented this out so that in CFDClientProgram/mainWindow/cwe_mainwindow.cpp
+//    we could add the status line to the center by specifying on the new widget
+//    setAlignment(Qt::AlignHCenter) and setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred)
+//    see lines 86-89 of that file
+//    subLayout->setAlignment(Qt::AlignRight);
 
     layout->addLayout(leftLayout);
     layout->addLayout(subLayout);

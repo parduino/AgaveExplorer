@@ -33,39 +33,13 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef AUTHFORM_H
-#define AUTHFORM_H
+#include "remotejoblister.h"
 
-#include <QMainWindow>
+#include "../ae_globals.h"
+#include "../utilFuncs/agavesetupdriver.h"
+#include "../remoteFileOps/joboperator.h"
 
-enum class RequestState;
-class AgaveSetupDriver;
-class RemoteDataThread;
-
-namespace Ui {
-class AuthForm;
-}
-
-class AuthForm : public QMainWindow
+RemoteJobLister::RemoteJobLister(QWidget *parent) : QTableView(parent)
 {
-    Q_OBJECT
-
-public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
-    ~AuthForm();
-
-private slots:
-    void performAuth();
-    void exitAuth();
-    void getCopyingInfo();
-    void getAuthReply(RequestState authReply);
-
-private:
-    Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
-};
-
-#endif // AUTHFORM_H
+    ae_globals::get_job_handle()->linkToJobLister(this);
+}

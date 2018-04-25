@@ -92,6 +92,26 @@ bool ae_globals::isValidLocalFolder(QString folderName)
     return true;
 }
 
+bool ae_globals::folderNamesMatch(QString folder1, QString folder2)
+{
+    QStringList folderParts1 = folder1.split('\\');
+    QStringList folderParts2 = folder2.split('\\');
+
+    if (folderParts1.size() != folderParts2.size())
+    {
+        return false;
+    }
+
+    for (int i = 0; i < folderParts1.size(); i++)
+    {
+        if (folderParts1.at(i) != folderParts2.at(i))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 AgaveSetupDriver * ae_globals::get_Driver()
 {
     return theDriver;
@@ -107,7 +127,7 @@ void ae_globals::set_Driver(AgaveSetupDriver * newDriver)
     theDriver = newDriver;
 }
 
-RemoteDataInterface * ae_globals::get_connection()
+RemoteDataThread * ae_globals::get_connection()
 {
     if (theDriver == NULL) return NULL;
     return theDriver->getDataConnection();

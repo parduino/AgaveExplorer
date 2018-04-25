@@ -84,25 +84,24 @@ void AuthForm::exitAuth()
 
 void AuthForm::performAuth()
 {
+    if (authInProgress) return;
+
     QString unameText = ui->unameInput->text();
     QString passText = ui->passwordInput->text();
 
-    QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
-
     RemoteDataReply * authReply = theConnection->performAuth(unameText, passText);
 
-    QApplication::restoreOverrideCursor();
-
-    if (authReply != NULL)
-    {
-        ui->instructText->setText("Connecting to DesignSafe");
-        QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),this,SLOT(getAuthReply(RequestState)));
-        QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),myDriver, SLOT(getAuthReply(RequestState)));
-    }
-    else
+    if (authReply == NULL)
     {
         myDriver->fatalInterfaceError("Unable to connect to DesignSafe. Please check internet connection.");
+        return;
     }
+    this->setCursor(QCursor(Qt::WaitCursor));
+
+    ui->instructText->setText("Connecting to DesignSafe");
+    QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),this,SLOT(getAuthReply(RequestState)));
+    QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),myDriver, SLOT(getAuthReply(RequestState)));
+    ui->loginButton->setEnabled(false);
 }
 
 void AuthForm::getAuthReply(RequestState authReply)
@@ -114,13 +113,16 @@ void AuthForm::getAuthReply(RequestState authReply)
     else if (authReply == RequestState::FAIL)
     {
         ui->instructText->setText("Username/Password combination incorrect, verify your credentials and try again.");
+        ui->loginButton->setEnabled(true);
     }
     else if (authReply == RequestState::NO_CONNECT)
     {
         ui->instructText->setText("Unable to contact DesignSafe, verify your connection and try again.");
+        ui->loginButton->setEnabled(true);
     }
     else
     {
         myDriver->fatalInterfaceError("Authentication Problems Detected");
     }
+    this->unsetCursor();
 }

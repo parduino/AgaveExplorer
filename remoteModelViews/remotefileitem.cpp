@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,48 +33,67 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#include "selectedfilelabel.h"
+#include "remotefileitem.h"
 
-#include "filetreenode.h"
-#include "remotefiletree.h"
-#include "../AgaveClientInterface/filemetadata.h"
-
-SelectedFileLabel::SelectedFileLabel(QWidget *parent) : QLabel(parent)
+RemoteFileItem::RemoteFileItem(bool isLoading) : QStandardItem()
 {
-    newSelectedItem(NULL);
-}
-
-void SelectedFileLabel::connectFileTreeWidget(RemoteFileTree * connectedTree)
-{
-    if (myFileTree != NULL)
+    myFile = FileNodeRef::nil();
+    if (isLoading)
     {
-        QObject::disconnect(myFileTree, 0, this, 0);
-    }
-    myFileTree = connectedTree;
-    if (myFileTree == NULL)
-    {
-        newSelectedItem(NULL);
-        return;
-    }
-    QObject::connect(myFileTree, SIGNAL(newFileSelected(FileTreeNode*)),
-                     this, SLOT(newSelectedItem(FileTreeNode*)));
-    newSelectedItem(myFileTree->getSelectedNode());
-}
-
-void SelectedFileLabel::newSelectedItem(FileTreeNode * newFileData)
-{
-    if (newFileData == NULL)
-    {
-        this->setText("No File Selected.");
+        setText("Loading . . . ");
     }
     else
     {
-        FileMetaData theFileData = newFileData->getFileData();
-
-        QString fileString = "Filename: %1\nType: %2\nSize: %3";
-        fileString = fileString.arg(theFileData.getFileName(),
-                                    theFileData.getFileTypeString(),
-                                    QString::number(theFileData.getSize()));
-        this->setText(fileString);
+        setText("Empty Folder");
     }
+}
+
+RemoteFileItem::RemoteFileItem(FileNodeRef fileInfo) : QStandardItem()
+{
+    myFile = fileInfo;
+    appendToRowList(this);
+}
+
+RemoteFileItem::RemoteFileItem(RemoteFileItem * rowLeader) : QStandardItem()
+{
+    myFile = FileNodeRef::nil();
+    if (rowLeader == NULL)
+    {
+        qDebug("Warning: Invalid Remote File Item Construction");
+        return;
+    }
+    myRowLeader = rowLeader;
+    myRowLeader->appendToRowList(this);
+}
+
+RemoteFileItem * RemoteFileItem::getRowHeader()
+{
+    if (myRowLeader == NULL) return this;
+    return myRowLeader->getRowHeader();
+}
+
+QList<RemoteFileItem*> RemoteFileItem::getRowList()
+{
+    if (myRowLeader == NULL) return rowList;
+    return myRowLeader->getRowList();
+}
+
+FileNodeRef RemoteFileItem::getFile()
+{
+    if (myRowLeader == NULL) return myFile;
+    return myRowLeader->getFile();
+}
+
+bool RemoteFileItem::parentOfPlaceholder()
+{
+    if (!getRowHeader()->hasChildren()) return false;
+    RemoteFileItem * nodeToCheck = (RemoteFileItem *)(getRowHeader()->child(0,0));
+    if (nodeToCheck == NULL) return false;
+    if (nodeToCheck->myFile.isNil()) return true;
+    return false;
+}
+
+void RemoteFileItem::appendToRowList(RemoteFileItem * toAdd)
+{
+    rowList.append(toAdd);
 }

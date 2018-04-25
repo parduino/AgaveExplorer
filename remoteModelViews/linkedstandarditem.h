@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,39 +33,21 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef AUTHFORM_H
-#define AUTHFORM_H
+#ifndef LINKEDSTANDARDITEM_H
+#define LINKEDSTANDARDITEM_H
 
-#include <QMainWindow>
+#include <QStandardItem>
 
-enum class RequestState;
-class AgaveSetupDriver;
-class RemoteDataThread;
-
-namespace Ui {
-class AuthForm;
-}
-
-class AuthForm : public QMainWindow
+class LinkedStandardItem : public QStandardItem
 {
-    Q_OBJECT
-
 public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
-    ~AuthForm();
+    LinkedStandardItem(QObject * linkedObject);
+    LinkedStandardItem(QObject * linkedObject, QString text);
 
-private slots:
-    void performAuth();
-    void exitAuth();
-    void getCopyingInfo();
-    void getAuthReply(RequestState authReply);
+    QObject * getLinkedObject();
 
 private:
-    Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
+    QObject * myLinkedObject;
 };
 
-#endif // AUTHFORM_H
+#endif // LINKEDSTANDARDITEM_H

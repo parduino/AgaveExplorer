@@ -39,6 +39,9 @@
 #include "utilFuncs/agavesetupdriver.h"
 
 #include <QWindow>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QVariant>
 
 class ExplorerWindow;
 
@@ -60,7 +63,7 @@ public:
     virtual QString getVersion();
 
 private slots:
-    void loadAppList(RequestState replyState, QJsonArray * appList);
+    void loadAppList(RequestState replyState, QVariantList appList);
 
 private:
     ExplorerWindow * mainWindow = NULL;

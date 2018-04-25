@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,28 +33,19 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef SELECTEDFILELABEL_H
-#define SELECTEDFILELABEL_H
+#include "linkedstandarditem.h"
 
-#include <QLabel>
-
-class FileTreeNode;
-class RemoteFileTree;
-
-class SelectedFileLabel : public QLabel
+LinkedStandardItem::LinkedStandardItem(QObject * linkedObject) : QStandardItem()
 {
-    Q_OBJECT
+    myLinkedObject = linkedObject;
+}
 
-public:
-    SelectedFileLabel(QWidget *parent=Q_NULLPTR);
+LinkedStandardItem::LinkedStandardItem(QObject * linkedObject, QString text) : QStandardItem(text)
+{
+    myLinkedObject = linkedObject;
+}
 
-    void connectFileTreeWidget(RemoteFileTree * connectedTree);
-
-private slots:
-    void newSelectedItem(FileTreeNode * newFileData);
-
-private:
-    RemoteFileTree * myFileTree = NULL;
-};
-
-#endif // SELECTEDFILELABEL_H
+QObject * LinkedStandardItem::getLinkedObject()
+{
+    return myLinkedObject;
+}

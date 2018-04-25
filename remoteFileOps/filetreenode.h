@@ -36,21 +36,25 @@
 #ifndef FILETREENODE_H
 #define FILETREENODE_H
 
+#include "filenoderef.h"
+
 #include <QObject>
 #include <QStandardItem>
+#include <QDateTime>
 
 enum class NodeState {FILE_BUFF_LOADED, FILE_BUFF_RELOADING, FILE_BUFF_LOADING, FILE_KNOWN,
                       FILE_SPECULATE_IDLE, FILE_SPECULATE_LOADING,
                       FOLDER_CONTENTS_LOADED, FOLDER_CONTENTS_RELOADING, FOLDER_CONTENTS_LOADING, FOLDER_KNOWN_CONTENTS_NOT,
                       FOLDER_SPECULATE_IDLE, FOLDER_SPECULATE_LOADING,
-                      OTHER_TYPE, ERROR};
-enum class SpaceHolderState {LOADING, EMPTY, NONE};
+                      INIT, ERROR, NON_EXTANT, DELETING};
+//Note: Non-extant refers to nodes that do not exist. Deleting says the node is slated for removal.
 
 enum class RequestState;
 class FileMetaData;
+class FileNodeRef;
 class RemoteDataInterface;
 class RemoteDataReply;
-class LinkedStandardItem;
+class FileOperator;
 
 //Note: Quite a bit of this object is less well written than I would like
 //Need to make data movements cleaner
@@ -60,24 +64,20 @@ class FileTreeNode : public QObject
     Q_OBJECT
 public:
     FileTreeNode(FileMetaData contents, FileTreeNode * parent = NULL);
-    FileTreeNode(QStandardItemModel * stdModel, QString rootFolderName, QObject * parent = NULL); //This creates the default root folder
+    FileTreeNode(QString rootFolderName, QObject * parent = NULL); //This creates the default root folder
     ~FileTreeNode();
 
     bool isRootNode();
-    bool nodeIsDisplayed();
-    void updateNodeDisplay();
-    void updateFileSize(int newSize);
     NodeState getNodeState();
-    FileMetaData getFileData();
+    FileNodeRef getFileData();
     QByteArray * getFileBuffer();
-    LinkedStandardItem * getFirstDataNode();
     FileTreeNode * getNodeWithName(QString filename);
     FileTreeNode * getClosestNodeWithName(QString filename);
     FileTreeNode * getParentNode();
     FileTreeNode * getNodeReletiveToNodeWithName(QString searchPath);
 
     void deleteFolderContentsData();
-    void setFileBuffer(QByteArray * newFileBuffer);
+    void setFileBuffer(const QByteArray *newFileBuffer);
 
     bool haveLStask();
     void setLStask(RemoteDataReply * newTask);
@@ -87,22 +87,23 @@ public:
     QList<FileTreeNode *> getChildList();
     FileTreeNode * getChildNodeWithName(QString filename);
 
-    bool fileNameMatches(QString folderToMatch);
     bool isFolder();
     bool isFile();
 
-signals:
-    void fileDataChanged();
-
-public slots:
-    void deliverLSdata(RequestState taskState, QList<FileMetaData>* dataList);
-    void deliverBuffData(RequestState taskState, QByteArray * bufferData);
+    bool isChildOf(FileTreeNode * possibleParent);
 
 private slots:
-    void underlyingFilesChanged();
+    void deliverLSdata(RequestState taskState, QList<FileMetaData> dataList);
+    void deliverBuffData(RequestState taskState, QByteArray bufferData);
 
 private:
-    void getModelLink();
+    void slateNodeForDelete();
+    void setNodeVisible();
+    void recomputeNodeState();
+
+    void changeNodeState(NodeState newState);
+    void settimestamps();
+
     FileTreeNode * pathSearchHelper(QString filename, bool stopEarly);
     FileTreeNode * pathSearchHelperFromAnyNode(QStringList filename, bool stopEarly);
 
@@ -110,25 +111,24 @@ private:
     QString getControlAddress(QList<FileMetaData> * newDataList);
     void updateFileNodeData(QList<FileMetaData> * newDataList);
 
-    void clearAllChildren(SpaceHolderState spaceholderVal);
-    void setSpaceholderNode(SpaceHolderState spaceholderVal);
+    void clearAllChildren();
     void insertFile(FileMetaData *newData);
     void purgeUnmatchedChildren(QList<FileMetaData> * newChildList);
-    QString getRawColumnData(int i, QStandardItemModel * fullModel);
 
-    QStandardItemModel * myModel = NULL;
     FileTreeNode * myParent = NULL;
-    LinkedStandardItem * firstDataNode = NULL;
-    LinkedStandardItem * mySpaceHolderNode = NULL;
-    SpaceHolderState mySpaceHolderState = SpaceHolderState::NONE;
 
-    FileMetaData * fileData = NULL;
+    FileNodeRef fileData;
     QList<FileTreeNode *> childList;
 
     QByteArray * fileDataBuffer = NULL;
 
     RemoteDataReply * lsTask = NULL;
     RemoteDataReply * bufferTask = NULL;
+
+    bool nodeVisible = false;
+    bool folderContentsKnown = false;
+    NodeState myState = NodeState::INIT;
+    qint64 nodeTimestamp;
 };
 
 #endif // FILETREENODE_H

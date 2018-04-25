@@ -64,7 +64,7 @@
     <item>
      <widget class="QTabWidget" name="stackedView">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="filePage">
        <attribute name="title">
@@ -249,7 +249,7 @@
   <customwidget>
    <class>RemoteFileTree</class>
    <extends>QTreeView</extends>
-   <header>remoteFileOps/remotefiletree.h</header>
+   <header>remoteModelViews/remotefiletree.h</header>
   </customwidget>
   <customwidget>
    <class>HeaderWidget</class>
@@ -266,12 +266,12 @@
   <customwidget>
    <class>RemoteJobLister</class>
    <extends>QTableView</extends>
-   <header>remoteFileOps/remotejoblister.h</header>
+   <header>remoteModelViews/remotejoblister.h</header>
   </customwidget>
   <customwidget>
    <class>SelectedFileLabel</class>
    <extends>QLabel</extends>
-   <header>remoteFileOps/selectedfilelabel.h</header>
+   <header>remoteModelViews/selectedfilelabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -37,13 +37,14 @@
 #define AGAVESETUPDRIVER_H
 
 #include <QObject>
+#include <QThread>
 
 enum class RequestState;
 
+class RemoteDataThread;
 class RemoteDataInterface;
 
 class AuthForm;
-//class ExplorerWindow;
 class JobOperator;
 class FileOperator;
 
@@ -59,7 +60,7 @@ public:
 
     virtual void closeAuthScreen() = 0;
 
-    RemoteDataInterface * getDataConnection();
+    RemoteDataThread * getDataConnection();
     JobOperator * getJobHandler();
     FileOperator * getFileHandler();
 
@@ -77,7 +78,8 @@ public slots:
     void fatalInterfaceError(QString errText);
 
 protected:
-    RemoteDataInterface * theConnector = NULL;
+    RemoteDataThread * theConnectThread = NULL;
+
     AuthForm * authWindow = NULL;
     JobOperator * myJobHandle = NULL;
     FileOperator * myFileHandle = NULL;

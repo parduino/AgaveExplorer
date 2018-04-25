@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,13 +33,58 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#include "remotejoblister.h"
+#ifndef REMOTEFILEMODEL_H
+#define REMOTEFILEMODEL_H
 
-#include "../ae_globals.h"
-#include "../utilFuncs/agavesetupdriver.h"
-#include "joboperator.h"
+#include <QObject>
+#include <QStandardItemModel>
+#include <QStandardItem>
+#include <QHeaderView>
 
-RemoteJobLister::RemoteJobLister(QWidget *parent) : QTableView(parent)
+#include "../AgaveExplorer/remoteFileOps/filenoderef.h"
+
+class FileNodeRef;
+class FileOperator;
+class RemoteFileItem;
+class RemoteFileTree;
+
+class RemoteFileModel : public QObject
 {
-    ae_globals::get_job_handle()->linkToJobLister(this);
-}
+    Q_OBJECT
+
+    friend class RemoteFileTree;
+
+public:
+    RemoteFileModel();
+
+protected:
+    RemoteFileItem * getItemByFile(FileNodeRef toFind);
+    QStandardItemModel * getRawModel();
+
+private slots:
+    void newFileData(FileNodeRef newFileData);
+
+private:
+    void setRootItem(FileNodeRef rootFile);
+    void purgeItem(FileNodeRef toRemove);
+    void updateItem(FileNodeRef toUpdate, bool folderContentsLoaded = false);
+    QList<RemoteFileItem *> createItemList(FileNodeRef theFileNode);
+
+    RemoteFileItem * findTargetItem(RemoteFileItem * parentItem, FileNodeRef toFind);
+    RemoteFileItem * findParentItem(FileNodeRef toFind);
+    QString getRawColumnData(FileNodeRef fileData, int i);
+    static QList<QStandardItem *> demoteList(QList<RemoteFileItem *> inputList);
+    static QStringList separateFilePathParts(QString thePath);
+    void updateItemList(QList<RemoteFileItem *> theList, FileNodeRef newFileInfo);
+
+    QStandardItemModel theModel;
+    RemoteFileItem * userRoot = NULL;
+
+    //const int tableNumCols = 7;
+    //const QStringList shownHeaderLabelList = {"File Name","Type","Size","Last Changed",
+    //                               "Format","mimeType","Permissions"};
+    const int tableNumCols = 3;
+    const QStringList shownHeaderLabelList = {"File Name","Type","Size"};
+};
+
+#endif // REMOTEFILEMODEL_H

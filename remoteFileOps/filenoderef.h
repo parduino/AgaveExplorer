@@ -1,7 +1,7 @@
 /*********************************************************************************
 **
-** Copyright (c) 2017 The University of Notre Dame
-** Copyright (c) 2017 The Regents of the University of California
+** Copyright (c) 2018 The University of Notre Dame
+** Copyright (c) 2018 The Regents of the University of California
 **
 ** Redistribution and use in source and binary forms, with or without modification,
 ** are permitted provided that the following conditions are met:
@@ -33,39 +33,40 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef AUTHFORM_H
-#define AUTHFORM_H
+#ifndef FILENODEREF_H
+#define FILENODEREF_H
 
-#include <QMainWindow>
+#include "../AgaveClientInterface/filemetadata.h"
 
-enum class RequestState;
-class AgaveSetupDriver;
-class RemoteDataThread;
+enum class NodeState;
 
-namespace Ui {
-class AuthForm;
-}
-
-class AuthForm : public QMainWindow
+class FileNodeRef : public FileMetaData
 {
-    Q_OBJECT
-
 public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
-    ~AuthForm();
+    FileNodeRef();
+    FileNodeRef& operator=(const FileNodeRef &toCopy);
 
-private slots:
-    void performAuth();
-    void exitAuth();
-    void getCopyingInfo();
-    void getAuthReply(RequestState authReply);
+    void setTimestamp(qint64 newTimestamp);
+    qint64 getTimestamp() const;
+
+    bool fileNodeExtant() const;
+    NodeState getNodeState() const;
+    bool isAncestorOf(const FileNodeRef &child) const;
+    const FileNodeRef getChildWithName(QString childName) const;
+    bool fileBufferLoaded() const;
+    const QByteArray getFileBuffer() const;
+    void setFileBuffer(const QByteArray * toSet) const;
+    bool folderContentsLoaded() const;
+    FileNodeRef getParent() const;
+    QList<FileNodeRef> getChildList() const;
+    bool isRootNode() const;
+
+    void enactFolderRefresh(bool clearData = false) const;
+
+    static FileNodeRef nil();
 
 private:
-    Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
+    qint64 timestamp = 0;
 };
 
-#endif // AUTHFORM_H
+#endif // FILENODEREF_H

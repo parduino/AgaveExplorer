@@ -36,6 +36,8 @@
 #ifndef JOBOPERATOR_H
 #define JOBOPERATOR_H
 
+#include "../AgaveClientInterface/remotejobdata.h"
+
 #include <QObject>
 #include <QMap>
 #include <QStandardItemModel>
@@ -44,7 +46,6 @@
 class RemoteFileWindow;
 class RemoteDataInterface;
 class RemoteJobLister;
-class RemoteJobData;
 class JobListNode;
 class RemoteDataReply;
 
@@ -58,7 +59,7 @@ public:
     ~JobOperator();
     void linkToJobLister(RemoteJobLister * newLister);
 
-    QMap<QString, const RemoteJobData *> getRunningJobs();
+    QMap<QString, const RemoteJobData *> getJobsList();
 
     void requestJobDetails(const RemoteJobData *toFetch);
     void underlyingJobChanged();
@@ -72,7 +73,7 @@ public slots:
     void demandJobDataRefresh();
 
 private slots:
-    void refreshRunningJobList(RequestState replyState, QList<RemoteJobData> *theData);
+    void refreshRunningJobList(RequestState replyState, QList<RemoteJobData> theData);
 
 private:
     QMap<QString, JobListNode *> jobData;

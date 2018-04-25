@@ -33,39 +33,46 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef AUTHFORM_H
-#define AUTHFORM_H
+#include "selectedfilelabel.h"
 
-#include <QMainWindow>
+#include "../remoteFileOps/filetreenode.h"
+#include "remotefiletree.h"
+#include "../AgaveClientInterface/filemetadata.h"
 
-enum class RequestState;
-class AgaveSetupDriver;
-class RemoteDataThread;
-
-namespace Ui {
-class AuthForm;
+SelectedFileLabel::SelectedFileLabel(QWidget *parent) : QLabel(parent)
+{
+    newSelectedItem(FileNodeRef::nil());
 }
 
-class AuthForm : public QMainWindow
+void SelectedFileLabel::connectFileTreeWidget(RemoteFileTree * connectedTree)
 {
-    Q_OBJECT
+    if (myFileTree != NULL)
+    {
+        QObject::disconnect(myFileTree, 0, this, 0);
+    }
+    myFileTree = connectedTree;
+    if (myFileTree == NULL)
+    {
+        newSelectedItem(FileNodeRef::nil());
+        return;
+    }
+    QObject::connect(myFileTree, SIGNAL(newFileSelected(FileNodeRef)),
+                     this, SLOT(newSelectedItem(FileNodeRef)));
+    newSelectedItem(myFileTree->getSelectedFile());
+}
 
-public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
-    ~AuthForm();
-
-private slots:
-    void performAuth();
-    void exitAuth();
-    void getCopyingInfo();
-    void getAuthReply(RequestState authReply);
-
-private:
-    Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
-};
-
-#endif // AUTHFORM_H
+void SelectedFileLabel::newSelectedItem(FileNodeRef newFileData)
+{
+    if (newFileData.isNil())
+    {
+        this->setText("No File Selected.");
+    }
+    else
+    {
+        QString fileString = "Filename: %1\nType: %2\nSize: %3";
+        fileString = fileString.arg(newFileData.getFileName(),
+                                    newFileData.getFileTypeString(),
+                                    QString::number(newFileData.getSize()));
+        this->setText(fileString);
+    }
+}

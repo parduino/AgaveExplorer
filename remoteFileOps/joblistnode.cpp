@@ -36,12 +36,12 @@
 #include "joblistnode.h"
 #include "joboperator.h"
 
-#include "../utilFuncs/linkedstandarditem.h"
+#include "../remoteModelViews/linkedstandarditem.h"
 
 #include "../AgaveClientInterface/remotedatainterface.h"
 #include "../ae_globals.h"
 
-JobListNode::JobListNode(RemoteJobData newData, QStandardItemModel * theModel, JobOperator *parent) : QObject(parent)
+JobListNode::JobListNode(RemoteJobData newData, QStandardItemModel * theModel) : QObject(ae_globals::get_job_handle())
 {
     myModel = theModel;
     if (myModel == NULL)
@@ -77,10 +77,19 @@ void JobListNode::setData(RemoteJobData newData)
     {
         for (int i = 0; i < myModel->columnCount(); i++)
         {
-            myModelRow.append(new LinkedStandardItem(this));
+            if (i == 0)
+            {
+                myModelItem = new LinkedStandardItem(this);
+                myModelRow.append(myModelItem);
+            }
+            else
+            {
+                myModelRow.append(new LinkedStandardItem(this));
+            }
         }
 
         myModel->insertRow(0, myModelRow);
+
     }
     else
     {
@@ -129,7 +138,6 @@ void JobListNode::setData(RemoteJobData newData)
 
     if (signalChange)
     {
-        emit jobDataChanged(this);
         ae_globals::get_job_handle()->underlyingJobChanged();
     }
 }
@@ -147,7 +155,6 @@ bool JobListNode::haveDetails()
 void JobListNode::setDetails(QMap<QString, QString> inputs, QMap<QString, QString> params)
 {
     myData.setDetails(inputs, params);
-    emit jobDataChanged(this);
     ae_globals::get_job_handle()->underlyingJobChanged();
 }
 
@@ -163,11 +170,11 @@ void JobListNode::setDetailTask(RemoteDataReply * newTask)
         QObject::disconnect(myDetailTask, 0, this, 0);
     }
     myDetailTask = newTask;
-    QObject::connect(myDetailTask, SIGNAL(haveJobDetails(RequestState,RemoteJobData*)),
-                     this, SLOT(deliverJobDetails(RequestState,RemoteJobData*)));
+    QObject::connect(myDetailTask, SIGNAL(haveJobDetails(RequestState,RemoteJobData)),
+                     this, SLOT(deliverJobDetails(RequestState,RemoteJobData)));
 }
 
-void JobListNode::deliverJobDetails(RequestState taskState, RemoteJobData * fullJobData)
+void JobListNode::deliverJobDetails(RequestState taskState, RemoteJobData fullJobData)
 {
     if (myDetailTask == QObject::sender())
     {
@@ -179,16 +186,16 @@ void JobListNode::deliverJobDetails(RequestState taskState, RemoteJobData * full
         return;
     }
 
-    if (fullJobData->getID() != myData.getID())
+    if (fullJobData.getID() != myData.getID())
     {
         qDebug("ERROR: Job data and detail request mismatch.");
         return;
     }
 
-    if (fullJobData->detailsLoaded() == false)
+    if (fullJobData.detailsLoaded() == false)
     {
         qDebug("ERROR: Job details query reply does not have details data.");
     }
 
-    myData.setDetails(fullJobData->getInputs(), fullJobData->getParams());
+    myData.setDetails(fullJobData.getInputs(), fullJobData.getParams());
 }

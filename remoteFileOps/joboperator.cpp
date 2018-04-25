@@ -37,7 +37,7 @@
 
 #include "../ae_globals.h"
 
-#include "remotejoblister.h"
+#include "../AgaveExplorer/remoteModelViews/remotejoblister.h"
 #include "../AgaveClientInterface/remotedatainterface.h"
 #include "../AgaveClientInterface/remotejobdata.h"
 #include "joblistnode.h"
@@ -60,22 +60,20 @@ void JobOperator::linkToJobLister(RemoteJobLister * newLister)
     newLister->setModel(&theJobList);
 }
 
-void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJobData> * theData)
+void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJobData> theData)
 {
-    if (QObject::sender() == currentJobReply)
-    {
-        //Note: RemoteDataReply destroys itself after signal
-        currentJobReply = NULL;
-    }
+    //Note: RemoteDataReply destroys itself after signal
+    currentJobReply = NULL;
     if (replyState != RequestState::GOOD)
     {
-        //TODO: some error here
+        ae_globals::displayPopup("Error: unable to list jobs. Please check your network connection and try again.", "Network Error:");
+        QTimer::singleShot(5000, this, SLOT(demandJobDataRefresh()));
         return;
     }
 
     bool notDone = false;
 
-    for (auto itr = theData->rbegin(); itr != theData->rend(); itr++)
+    for (auto itr = theData.rbegin(); itr != theData.rend(); itr++)
     {
         if (jobData.contains((*itr).getID()))
         {
@@ -84,7 +82,7 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
         }
         else
         {
-            JobListNode * theItem = new JobListNode(*itr, &theJobList, this);
+            JobListNode * theItem = new JobListNode(*itr, &theJobList);
             jobData.insert(theItem->getData()->getID(), theItem);
         }
         if (!notDone && ((*itr).getState() != "FINISHED") && ((*itr).getState() != "FAILED"))
@@ -101,17 +99,13 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
     }
 }
 
-QMap<QString, const RemoteJobData *> JobOperator::getRunningJobs()
+QMap<QString, const RemoteJobData *> JobOperator::getJobsList()
 {
     QMap<QString, const RemoteJobData *> ret;
 
     for (auto itr = jobData.cbegin(); itr != jobData.cend(); itr++)
     {
-        QString myState = (*itr)->getData()->getState();
-        if (!myState.isEmpty() && (myState != "FINISHED") && (myState != "FAILED"))
-        {
-            ret.insert((*itr)->getData()->getID(), (*itr)->getData());
-        }
+        ret.insert((*itr)->getData()->getID(), (*itr)->getData());
     }
 
     return ret;
@@ -157,6 +151,6 @@ void JobOperator::demandJobDataRefresh()
         return;
     }
     currentJobReply = ae_globals::get_connection()->getListOfJobs();
-    QObject::connect(currentJobReply, SIGNAL(haveJobList(RequestState,QList<RemoteJobData>*)),
-                     this, SLOT(refreshRunningJobList(RequestState,QList<RemoteJobData>*)));
+    QObject::connect(currentJobReply, SIGNAL(haveJobList(RequestState,QList<RemoteJobData>)),
+                     this, SLOT(refreshRunningJobList(RequestState,QList<RemoteJobData>)));
 }

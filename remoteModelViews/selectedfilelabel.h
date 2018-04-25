@@ -33,39 +33,29 @@
 // Contributors:
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
-#ifndef AUTHFORM_H
-#define AUTHFORM_H
+#ifndef SELECTEDFILELABEL_H
+#define SELECTEDFILELABEL_H
 
-#include <QMainWindow>
+#include <QLabel>
+#include "../AgaveExplorer/remoteFileOps/filenoderef.h"
 
-enum class RequestState;
-class AgaveSetupDriver;
-class RemoteDataThread;
+class FileTreeNode;
+class RemoteFileTree;
 
-namespace Ui {
-class AuthForm;
-}
-
-class AuthForm : public QMainWindow
+class SelectedFileLabel : public QLabel
 {
     Q_OBJECT
 
 public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
-    ~AuthForm();
+    SelectedFileLabel(QWidget *parent=Q_NULLPTR);
+
+    void connectFileTreeWidget(RemoteFileTree * connectedTree);
 
 private slots:
-    void performAuth();
-    void exitAuth();
-    void getCopyingInfo();
-    void getAuthReply(RequestState authReply);
+    void newSelectedItem(FileNodeRef newFileData);
 
 private:
-    Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
+    RemoteFileTree * myFileTree = NULL;
 };
 
-#endif // AUTHFORM_H
+#endif // SELECTEDFILELABEL_H

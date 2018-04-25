@@ -40,27 +40,34 @@
 #include "remoteFileOps/fileoperator.h"
 #include "remoteFileOps/joboperator.h"
 
-#include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
+#include "../AgaveClientInterface/agaveInterfaces/agavethread.h"
 #include "../AgaveClientInterface/agaveInterfaces/agavetaskreply.h"
 
 #include "../ae_globals.h"
 
 ExplorerDriver::ExplorerDriver(QObject *parent, bool debug) : AgaveSetupDriver(parent, debug)
 {
-    AgaveHandler * tmpHandle = new AgaveHandler(this);
+    AgaveThread * tmpHandle = new AgaveThread(this);
+    tmpHandle->start();
+    while (!tmpHandle->interfaceReady())
+    {
+        QThread::usleep(10);
+    }
+
     tmpHandle->registerAgaveAppInfo("compress", "compress-0.1u1",{"directory", "compression_type"},{},"directory");
     tmpHandle->registerAgaveAppInfo("extract", "extract-0.1u1",{"inputFile"},{},"inputFile");
 
     tmpHandle->registerAgaveAppInfo("cwe-serial", "cwe-serial-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
     tmpHandle->registerAgaveAppInfo("cwe-parallel", "cwe-parallel-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
 
-    theConnector = (RemoteDataInterface *) tmpHandle;
-    QObject::connect(theConnector, SIGNAL(sendFatalErrorMessage(QString)), this, SLOT(fatalInterfaceError(QString)));
+    QObject::connect(tmpHandle, SIGNAL(sendFatalErrorMessage(QString)), this, SLOT(fatalInterfaceError(QString)));
+
+    theConnectThread = tmpHandle;
 }
 
 ExplorerDriver::~ExplorerDriver()
 {
-    if (mainWindow != NULL) mainWindow->deleteLater();
+    if (mainWindow != NULL) delete mainWindow;
 }
 
 void ExplorerDriver::startup()
@@ -72,7 +79,7 @@ void ExplorerDriver::startup()
     authWindow->show();
     QObject::connect(authWindow->windowHandle(),SIGNAL(visibleChanged(bool)),this, SLOT(subWindowHidden(bool)));
 
-    mainWindow = new ExplorerWindow(this);
+    mainWindow = new ExplorerWindow();
 }
 
 void ExplorerDriver::closeAuthScreen()
@@ -98,10 +105,9 @@ void ExplorerDriver::closeAuthScreen()
         authWindow = NULL;
     }
 
-    AgaveHandler * tmpHandle = (AgaveHandler *) theConnector;
-    AgaveTaskReply * agaveList = tmpHandle->getAgaveAppList();
+    AgaveTaskReply * agaveList = ((AgaveThread *)theConnectThread)->getAgaveAppList();
 
-    QObject::connect(agaveList, SIGNAL(haveAgaveAppList(RequestState,QJsonArray*)), this, SLOT(loadAppList(RequestState,QJsonArray*)));
+    QObject::connect(agaveList, SIGNAL(haveAgaveAppList(RequestState,QVariantList)), this, SLOT(loadAppList(RequestState,QVariantList)));
 }
 
 void ExplorerDriver::startOffline()
@@ -120,7 +126,7 @@ QString ExplorerDriver::getVersion()
     return "Version: 0.1";
 }
 
-void ExplorerDriver::loadAppList(RequestState replyState, QJsonArray * appList)
+void ExplorerDriver::loadAppList(RequestState replyState, QVariantList appList)
 {
     if (replyState != RequestState::GOOD)
     {
@@ -128,9 +134,9 @@ void ExplorerDriver::loadAppList(RequestState replyState, QJsonArray * appList)
         return;
     }
 
-    for (auto itr = appList->constBegin(); itr != appList->constEnd(); itr++)
+    for (auto itr = appList.constBegin(); itr != appList.constEnd(); itr++)
     {
-        QString appName = (*itr).toObject().value("name").toString();
+        QString appName = (*itr).toJsonObject().value("name").toString();
 
         if (!appName.isEmpty())
         {
