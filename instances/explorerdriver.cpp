@@ -60,8 +60,6 @@ ExplorerDriver::ExplorerDriver(QObject *parent, bool debug) : AgaveSetupDriver(p
     tmpHandle->registerAgaveAppInfo("cwe-serial", "cwe-serial-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
     tmpHandle->registerAgaveAppInfo("cwe-parallel", "cwe-parallel-0.1.0", {"stage"}, {"file_input", "directory"}, "directory");
 
-    QObject::connect(tmpHandle, SIGNAL(sendFatalErrorMessage(QString)), this, SLOT(fatalInterfaceError(QString)));
-
     theConnectThread = tmpHandle;
 }
 
@@ -86,7 +84,7 @@ void ExplorerDriver::closeAuthScreen()
 {
     if (mainWindow == NULL)
     {
-        fatalInterfaceError("Fatal Error in window system: No Main Window");
+        ae_globals::displayFatalPopup("Fatal Error in window system: No Main Window");
         return;
     }
 
@@ -130,7 +128,7 @@ void ExplorerDriver::loadAppList(RequestState replyState, QVariantList appList)
 {
     if (replyState != RequestState::GOOD)
     {
-        qDebug("App List not available.");
+        qCDebug(agaveAppLayer, "App List not available.");
         return;
     }
 
@@ -143,4 +141,16 @@ void ExplorerDriver::loadAppList(RequestState replyState, QVariantList appList)
             mainWindow->addAppToList(appName);
         }
     }
+}
+
+void ExplorerDriver::loadStyleFiles()
+{
+    QFile simCenterStyle(":/styleCommon/style.qss");
+    if (!simCenterStyle.open(QFile::ReadOnly))
+    {
+        ae_globals::displayFatalPopup("Missing file for graphics style. Your install is probably corrupted.");
+    }
+    QString commonStyle = QLatin1String(simCenterStyle.readAll());
+
+    qApp->setStyleSheet(commonStyle);
 }

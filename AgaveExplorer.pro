@@ -70,7 +70,8 @@ SOURCES += main.cpp \
     remoteModelViews/remotejoblister.cpp \
     remoteModelViews/selectedfilelabel.cpp \
     remoteModelViews/remotefileitem.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavethread.cpp
+    ../AgaveClientInterface/agaveInterfaces/agavethread.cpp \
+    utilFuncs/fixforssl.cpp
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -112,13 +113,19 @@ HEADERS += \
     remoteModelViews/remotejoblister.h \
     remoteModelViews/selectedfilelabel.h \
     remoteModelViews/remotefileitem.h \
-    ../AgaveClientInterface/agaveInterfaces/agavethread.h
+    ../AgaveClientInterface/agaveInterfaces/agavethread.h \
+    utilFuncs/fixforssl.h
 
 FORMS += \
     instances/explorerwindow.ui \
     utilFuncs/authform.ui \
     utilFuncs/copyrightdialog.ui \
     utilFuncs/singlelinedialog.ui
+
+#win32 {
+FORMS += \
+    utilFuncs/fixforssl.ui
+#}
 
 RESOURCES += \
     SimCenterCommon/commonResources.qrc \

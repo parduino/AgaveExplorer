@@ -54,10 +54,10 @@ public:
     ~ExplorerDriver();
 
     virtual void startup();
-
     virtual void closeAuthScreen();
-
     virtual void startOffline();
+
+    virtual void loadStyleFiles();
 
     virtual QString getBanner();
     virtual QString getVersion();
@@ -66,6 +66,8 @@ private slots:
     void loadAppList(RequestState replyState, QVariantList appList);
 
 private:
+
+
     ExplorerWindow * mainWindow = NULL;
 };
 

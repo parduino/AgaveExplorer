@@ -173,7 +173,7 @@ void FileTreeNode::setLStask(RemoteDataReply * newTask)
 {
     if (!isFolder())
     {
-        qDebug("ERROR: LS called on file rather than folder.");
+        qCDebug(agaveAppLayer, "ERROR: LS called on file rather than folder.");
         return;
     }
     if (lsTask != NULL)
@@ -195,7 +195,7 @@ void FileTreeNode::setBuffTask(RemoteDataReply * newTask)
 {
     if (isFolder())
     {
-        qDebug("ERROR: Buffer download called on folder.");
+        qCDebug(agaveAppLayer, "ERROR: Buffer download called on folder.");
         return;
     }
     if (bufferTask != NULL)
@@ -259,7 +259,7 @@ void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dat
     {
         if (verifyControlNode(&dataList) == false)
         {
-            qDebug("ERROR: File tree data/node mismatch");
+            qCDebug(agaveAppLayer, "ERROR: File tree data/node mismatch");
             recomputeNodeState();
             return;
         }
@@ -267,11 +267,7 @@ void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dat
         return;
     }
 
-    if (taskState == RequestState::NO_CONNECT)
-    {
-        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignDafe.", "Connection Issue");
-    }
-    else if (taskState == RequestState::FAIL) //TODO: check this, some failures do not imply the file does not exist
+    if (taskState == RequestState::FILE_NOT_FOUND)
     {
         if (!nodeVisible)
         {
@@ -279,6 +275,11 @@ void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dat
             return;
         }
     }
+    else
+    {
+        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignDafe.", "Connection Issue");
+    }
+
     recomputeNodeState();
 }
 
@@ -287,7 +288,7 @@ void FileTreeNode::deliverBuffData(RequestState taskState, QByteArray bufferData
     bufferTask = NULL;
     if (taskState == RequestState::GOOD)
     {
-        qDebug("Download of buffer complete: %s", qPrintable(fileData.getFullPath()));
+        qCDebug(agaveAppLayer, "Download of buffer complete: %s", qPrintable(fileData.getFullPath()));
         if (bufferData.isNull())
         {
             setFileBuffer(NULL);
@@ -299,7 +300,7 @@ void FileTreeNode::deliverBuffData(RequestState taskState, QByteArray bufferData
         return;
     }
 
-    if (taskState == RequestState::FAIL)//TODO: check this, some failures do not imply the file does not exist
+    if (taskState == RequestState::FILE_NOT_FOUND)
     {
         if (!nodeVisible)
         {
@@ -307,7 +308,7 @@ void FileTreeNode::deliverBuffData(RequestState taskState, QByteArray bufferData
             return;
         }
     }
-    else if (taskState == RequestState::NO_CONNECT)
+    else
     {
         ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignDafe.", "Connection Issue");
     }
@@ -429,6 +430,7 @@ FileTreeNode * FileTreeNode::pathSearchHelper(QString filename, bool stopEarly)
     if (isRootNode() == false) return NULL;
 
     QStringList filePathParts = FileMetaData::getPathNameList(filename);
+    if (filePathParts.isEmpty()) return NULL;
     FileTreeNode * searchNode = this;
 
     QString rootName = filePathParts.takeFirst();

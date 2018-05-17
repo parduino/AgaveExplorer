@@ -85,7 +85,7 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
             JobListNode * theItem = new JobListNode(*itr, &theJobList);
             jobData.insert(theItem->getData()->getID(), theItem);
         }
-        if (!notDone && ((*itr).getState() != "FINISHED") && ((*itr).getState() != "FAILED"))
+        if (!notDone && (!(*itr).inTerminalState()))
         {
             notDone = true;
         }

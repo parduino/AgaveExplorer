@@ -42,10 +42,20 @@
 
 #include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
 
+Q_LOGGING_CATEGORY(agaveAppLayer, "Agave App Layer")
+
 AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent)
 {
     ae_globals::set_Driver(this);
-    debugMode = debug;
+
+    if (debug)
+    {
+        QLoggingCategory::installFilter(debugCategoryFilterOn);
+    }
+    else
+    {
+        QLoggingCategory::installFilter(debugCategoryFilterOff);
+    }
 
     qRegisterMetaType<RequestState>("RequestState");
     qRegisterMetaType<FileNodeRef>("FileNodeRef");
@@ -53,6 +63,10 @@ AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent
     qRegisterMetaType<RemoteJobData>("RemoteJobData");
     qRegisterMetaType<QList<FileMetaData>>("QList<FileMetaData>");
     qRegisterMetaType<QList<RemoteJobData>>("QList<RemoteJobData>");
+
+    qApp->setQuitOnLastWindowClosed(false);
+    //Note: Window closing must link to the shutdown sequence, otherwise the app will not close
+    //Note: Might consider a better way of implementing this.
 }
 
 AgaveSetupDriver::~AgaveSetupDriver()
@@ -67,6 +81,41 @@ AgaveSetupDriver::~AgaveSetupDriver()
         theConnectThread->quit();
         theConnectThread->wait();
     }
+}
+
+void AgaveSetupDriver::debugCategoryFilterOn(QLoggingCategory *category)
+{
+    performDebugFiltering(category, true);
+}
+
+void AgaveSetupDriver::debugCategoryFilterOff(QLoggingCategory *category)
+{
+    performDebugFiltering(category, false);
+}
+
+void AgaveSetupDriver::performDebugFiltering(QLoggingCategory *category, bool debugEnabled)
+{
+    if (qstrcmp(category->categoryName(), "Raw HTTP") == 0)
+    {
+        category->setEnabled(QtDebugMsg, false);
+        return;
+    }
+    if (qstrcmp(category->categoryName(), "Remote Interface") == 0)
+    {
+        category->setEnabled(QtDebugMsg, debugEnabled);
+        return;
+    }
+    if (qstrcmp(category->categoryName(), "Agave App Layer") == 0)
+    {
+        category->setEnabled(QtDebugMsg, debugEnabled);
+        return;
+    }
+    if (qstrcmp(category->categoryName(), "default") == 0)
+    {
+        category->setEnabled(QtDebugMsg, debugEnabled);
+        return;
+    }
+    category->setEnabled(QtDebugMsg, false);
 }
 
 RemoteDataThread * AgaveSetupDriver::getDataConnection()
@@ -84,22 +133,12 @@ FileOperator * AgaveSetupDriver::getFileHandler()
     return myFileHandle;
 }
 
-bool AgaveSetupDriver::inDebugMode()
-{
-    return debugMode;
-}
-
 void AgaveSetupDriver::getAuthReply(RequestState authReply)
 {
     if ((authReply == RequestState::GOOD) && (authWindow != NULL) && (authWindow->isVisible()))
     {
         closeAuthScreen();
     }
-}
-
-void AgaveSetupDriver::fatalInterfaceError(QString errText)
-{
-    ae_globals::displayFatalPopup(errText);
 }
 
 void AgaveSetupDriver::subWindowHidden(bool nowVisible)
@@ -117,14 +156,14 @@ void AgaveSetupDriver::shutdown()
         return;
     }
     doingShutdown = true;
-    qDebug("Beginning graceful shutdown.");
+    qCDebug(agaveAppLayer, "Beginning graceful shutdown.");
     if (theConnectThread != NULL)
     {
         RemoteDataReply * revokeTask = theConnectThread->closeAllConnections();
         if (revokeTask != NULL)
         {
             QObject::connect(revokeTask, SIGNAL(connectionsClosed(RequestState)), this, SLOT(shutdownCallback()));
-            qDebug("Waiting on outstanding tasks");
+            qCDebug(agaveAppLayer, "Waiting on outstanding tasks");
             QMessageBox * waitBox = new QMessageBox(); //Note: deliberate memory leak, as program closes right after
             waitBox->setText("Waiting for network shutdown. Click OK to force quit.");
             waitBox->setStandardButtons(QMessageBox::Close);
@@ -139,6 +178,6 @@ void AgaveSetupDriver::shutdown()
 
 void AgaveSetupDriver::shutdownCallback()
 {
-    qDebug("Invoking final exit");
+    qCDebug(agaveAppLayer, "Invoking final exit");
     QCoreApplication::instance()->exit(0);
 }

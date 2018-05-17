@@ -50,7 +50,8 @@ void ae_globals::displayFatalPopup(QString message, QString header)
     errorMessage.setDefaultButton(QMessageBox::Close);
     errorMessage.setIcon(QMessageBox::Critical);
     errorMessage.exec();
-    QCoreApplication::instance()->exit(-1);
+    QCoreApplication::instance()->exit(1);
+    qFatal("%s", qPrintable(message));
 }
 
 void ae_globals::displayFatalPopup(QString message)
@@ -78,6 +79,16 @@ bool ae_globals::isValidFolderName(QString folderName)
     {
         return false;
     }
+
+    for (QChar aLetter : folderName)
+    {
+        if (aLetter.isDigit()) continue;
+        if (aLetter.isSpace()) continue;
+        if (aLetter.isLetter()) continue;
+        if (aLetter == '_') continue;
+        return false;
+    }
+
     //TODO: PRS
     return true;
 }

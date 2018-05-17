@@ -34,66 +34,35 @@
 // Written by Peter Sempolinski, for the Natural Hazard Modeling Laboratory, director: Ahsan Kareem, at Notre Dame
 
 #include <QApplication>
-#include <QtGlobal>
 #include <QFile>
 #include <QSslSocket>
 
 #include "instances/explorerdriver.h"
 #include "../AgaveClientInterface/remotedatainterface.h"
-
-void emptyMessageHandler(QtMsgType, const QMessageLogContext &, const QString &){}
+#include "ae_globals.h"
+#include "../AgaveExplorer/utilFuncs/fixforssl.h"
 
 int main(int argc, char *argv[])
 {
     QApplication mainRunLoop(argc, argv);
+
+    if (!FixForSSL::performSSLcheck())
+    {
+        return mainRunLoop.exec();
+    }
+
     bool debugLoggingEnabled = false;
-    bool logRawOutput = false;
     for (int i = 0; i < argc; i++)
     {
         if (strcmp(argv[i],"enableDebugLogging") == 0)
         {
             debugLoggingEnabled = true;
         }
-        if (strcmp(argv[i],"logRawOutput") == 0)
-        {
-            logRawOutput = true;
-        }
-    }
-
-    if (debugLoggingEnabled)
-    {
-        qDebug("NOTE: Debugging text output is enabled.");
-    }
-    else
-    {
-        qInstallMessageHandler(emptyMessageHandler);
     }
 
     ExplorerDriver programDriver(NULL, debugLoggingEnabled);
-
-    QFile simCenterStyle(":/styleCommon/style.qss");
-    if (!simCenterStyle.open(QFile::ReadOnly))
-    {
-        programDriver.fatalInterfaceError("Missing file for graphics style. Your install is probably corrupted.");
-    }
-    QString commonStyle = QLatin1String(simCenterStyle.readAll());
-
-    mainRunLoop.setQuitOnLastWindowClosed(false);
-    //Note: Window closeing must link to the shutdown sequence, otherwise the app will not close
-    //Note: Might consider a better way of implementing this.
-
-    if (QSslSocket::supportsSsl() == false)
-    {
-        programDriver.fatalInterfaceError("SSL support was not detected on this computer.\nPlease insure that some version of SSL is installed,\n such as by installing OpenSSL.\nInstalling a web browser will probably also work.");
-    }
-
-    if (debugLoggingEnabled && logRawOutput)
-    {
-        qDebug("NOTE: Debugging text including raw remote output.");
-        programDriver.getDataConnection()->setRawDebugOutput(true);
-    }
-
+    programDriver.loadStyleFiles();
     programDriver.startup();
-    mainRunLoop.setStyleSheet(commonStyle);
+
     return mainRunLoop.exec();
 }

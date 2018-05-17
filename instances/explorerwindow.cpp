@@ -158,7 +158,7 @@ void ExplorerWindow::agaveCommandInvoked()
     QStringList inputList = agaveParamLists.value(selectedAgaveApp);
     QMultiMap<QString, QString> allInputs;
 
-    qDebug("Input List:");
+    qCDebug(agaveAppLayer, "Input List:");
     for (auto itr = inputList.cbegin(); itr != inputList.cend(); itr++)
     {
         QString paramName = "debugAgave_";
@@ -168,14 +168,14 @@ void ExplorerWindow::agaveCommandInvoked()
         if (theInput != NULL)
         {
             allInputs.insert((*itr),theInput->text());
-            qDebug("%s : %s", qPrintable(*itr), qPrintable(theInput->text()));
+            qCDebug(agaveAppLayer, "%s : %s", qPrintable(*itr), qPrintable(theInput->text()));
         }
     }
 
     RemoteDataReply * theTask = ae_globals::get_connection()->runRemoteJob(selectedAgaveApp,allInputs,workingDir);
     if (theTask == NULL)
     {
-        qDebug("Unable to invoke task");
+        qCDebug(agaveAppLayer, "Unable to invoke task");
         return;
     }
     waitingOnCommand = true;

@@ -39,6 +39,10 @@
 #include <QString>
 #include <QMessageBox>
 #include <QCoreApplication>
+#include <QLoggingCategory>
+#include <QtGlobal>
+
+Q_DECLARE_LOGGING_CATEGORY(agaveAppLayer)
 
 class AgaveSetupDriver;
 class RemoteDataThread;

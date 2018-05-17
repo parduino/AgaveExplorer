@@ -109,7 +109,7 @@ public:
 signals:
     //Note: it is very important that connections for these signals be queued
     void fileOpStarted();
-    void fileOpDone(RequestState opState, QString message);
+    void fileOpDone(RequestState opState, QString err_msg);
     void fileSystemChange(FileNodeRef changedFile);
 
 protected:
@@ -128,15 +128,15 @@ protected:
     void enactFolderRefresh(const FileNodeRef &selectedNode, bool clearData = false);
 
 private slots:
-    void getDeleteReply(RequestState replyState);
-    void getMoveReply(RequestState replyState, FileMetaData revisedFileData);
+    void getDeleteReply(RequestState replyState, QString toDelete);
+    void getMoveReply(RequestState replyState, FileMetaData revisedFileData, QString from);
     void getCopyReply(RequestState replyState, FileMetaData newFileData);
-    void getRenameReply(RequestState replyState, FileMetaData newFileData);
+    void getRenameReply(RequestState replyState, FileMetaData newFileData, QString oldName);
 
     void getMkdirReply(RequestState replyState, FileMetaData newFolderData);
 
     void getUploadReply(RequestState replyState, FileMetaData newFileData);
-    void getDownloadReply(RequestState replyState);
+    void getDownloadReply(RequestState replyState, QString localDest);
 
     void getCompressReply(RequestState finalState, QJsonDocument rawData);
     void getDecompressReply(RequestState finalState, QJsonDocument rawData);
@@ -146,8 +146,6 @@ private slots:
 
 private:
     FileTreeNode * getFileNodeFromNodeRef(const FileNodeRef &thedata, bool verifyTimestamp = true);
-
-    QString getStringFromInitParams(QString stringKey);
 
     void recursiveDownloadProcessRetry();
     bool recursiveDownloadRetrivalHelper(FileTreeNode * nodeToCheck); //Return true if have all data
@@ -159,6 +157,8 @@ private:
 
     bool sendRecursiveCreateFolderReq(FileTreeNode * selectedNode, QString newName);
     bool sendRecursiveUploadReq(FileTreeNode * uploadTarget, QString localFile);
+
+    void emitStdFileOpErr(QString errString, RequestState errState);
 
     FileTreeNode * rootFileNode = NULL;
 

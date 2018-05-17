@@ -35,6 +35,8 @@
 
 #include "remotefileitem.h"
 
+#include "../ae_globals.h"
+
 RemoteFileItem::RemoteFileItem(bool isLoading) : QStandardItem()
 {
     myFile = FileNodeRef::nil();
@@ -59,7 +61,7 @@ RemoteFileItem::RemoteFileItem(RemoteFileItem * rowLeader) : QStandardItem()
     myFile = FileNodeRef::nil();
     if (rowLeader == NULL)
     {
-        qDebug("Warning: Invalid Remote File Item Construction");
+        qCDebug(agaveAppLayer, "Warning: Invalid Remote File Item Construction");
         return;
     }
     myRowLeader = rowLeader;

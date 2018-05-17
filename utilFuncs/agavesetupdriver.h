@@ -38,6 +38,8 @@
 
 #include <QObject>
 #include <QThread>
+#include <QLoggingCategory>
+#include <QApplication>
 
 enum class RequestState;
 
@@ -55,10 +57,11 @@ public:
     explicit AgaveSetupDriver(QObject *parent = nullptr, bool debug = false);
     ~AgaveSetupDriver();
     virtual void startup() = 0;
-
     virtual void startOffline() = 0;
 
     virtual void closeAuthScreen() = 0;
+
+    virtual void loadStyleFiles() = 0;
 
     RemoteDataThread * getDataConnection();
     JobOperator * getJobHandler();
@@ -66,7 +69,10 @@ public:
 
     virtual QString getBanner() = 0;
     virtual QString getVersion() = 0;
-    bool inDebugMode();
+
+    static void debugCategoryFilterOn(QLoggingCategory *category);
+    static void debugCategoryFilterOff(QLoggingCategory *category);
+    static void performDebugFiltering(QLoggingCategory *category, bool debugEnabled);
 
 private slots:
     void getAuthReply(RequestState authReply);
@@ -75,7 +81,6 @@ private slots:
 
 public slots:
     void shutdown();
-    void fatalInterfaceError(QString errText);
 
 protected:
     RemoteDataThread * theConnectThread = NULL;
@@ -86,11 +91,6 @@ protected:
 
     bool doingShutdown = false;
 
-    bool debugMode = false;
-
-signals:
-
-public slots:
 };
 
 #endif // AGAVESETUPDRIVER_H

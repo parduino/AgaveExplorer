@@ -40,6 +40,7 @@
 #include "copyrightdialog.h"
 
 #include "agavesetupdriver.h"
+#include "../ae_globals.h"
 
 AuthForm::AuthForm(AgaveSetupDriver * theDriver, QWidget *parent) :
     QMainWindow(parent),
@@ -93,7 +94,7 @@ void AuthForm::performAuth()
 
     if (authReply == NULL)
     {
-        myDriver->fatalInterfaceError("Unable to connect to DesignSafe. Please check internet connection.");
+        ae_globals::displayFatalPopup("Unable to connect to DesignSafe. Please check internet connection.");
         return;
     }
     this->setCursor(QCursor(Qt::WaitCursor));
@@ -110,19 +111,15 @@ void AuthForm::getAuthReply(RequestState authReply)
     {
         ui->instructText->setText("Loading . . .");
     }
-    else if (authReply == RequestState::FAIL)
+    else if (authReply == RequestState::EXPLICIT_ERROR)
     {
         ui->instructText->setText("Username/Password combination incorrect, verify your credentials and try again.");
         ui->loginButton->setEnabled(true);
     }
-    else if (authReply == RequestState::NO_CONNECT)
+    else
     {
         ui->instructText->setText("Unable to contact DesignSafe, verify your connection and try again.");
         ui->loginButton->setEnabled(true);
-    }
-    else
-    {
-        myDriver->fatalInterfaceError("Authentication Problems Detected");
     }
     this->unsetCursor();
 }

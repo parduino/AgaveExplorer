@@ -107,7 +107,7 @@ void JobListNode::setData(RemoteJobData newData)
         QStandardItem * dataEntry = myModelRow.at(i);
         if (dataEntry == NULL)
         {
-            qDebug("ERROR: Column Mismatch in job list.");
+            qCDebug(agaveAppLayer, "ERROR: Column Mismatch in job list.");
             return;
         }
 
@@ -182,19 +182,19 @@ void JobListNode::deliverJobDetails(RequestState taskState, RemoteJobData fullJo
     }
     if (taskState != RequestState::GOOD)
     {
-        qDebug("Unable to get task details");
+        qCDebug(agaveAppLayer, "Unable to get task details");
         return;
     }
 
     if (fullJobData.getID() != myData.getID())
     {
-        qDebug("ERROR: Job data and detail request mismatch.");
+        qCDebug(agaveAppLayer, "ERROR: Job data and detail request mismatch.");
         return;
     }
 
     if (fullJobData.detailsLoaded() == false)
     {
-        qDebug("ERROR: Job details query reply does not have details data.");
+        qCDebug(agaveAppLayer, "ERROR: Job details query reply does not have details data.");
     }
 
     myData.setDetails(fullJobData.getInputs(), fullJobData.getParams());
