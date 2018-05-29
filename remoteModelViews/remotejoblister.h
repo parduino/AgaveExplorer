@@ -39,12 +39,15 @@
 #include <QTableView>
 
 class JobOperator;
+class JobListNode;
 
 class RemoteJobLister : public QTableView
 {
     Q_OBJECT
 public:
     explicit RemoteJobLister(QWidget *parent = nullptr);
+
+private:
 };
 
 #endif // REMOTEJOBLISTER_H

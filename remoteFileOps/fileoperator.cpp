@@ -173,8 +173,6 @@ void FileOperator::sendMoveReq(const FileNodeRef &moveFrom, QString newName)
     if (!moveFrom.fileNodeExtant()) return;
     if (!fileOpPending->checkAndClaim()) return;
 
-    ae_globals::get_connection()->setCurrentRemoteWorkingDirectory(moveFrom.getContainingPath());
-
     qCDebug(agaveAppLayer, "Starting move procedure: %s to %s",
             qPrintable(moveFrom.getFullPath()),
             qPrintable(newName));
@@ -210,10 +208,8 @@ void FileOperator::getMoveReply(RequestState replyState, FileMetaData revisedFil
 
 void FileOperator::sendCopyReq(const FileNodeRef &copyFrom, QString newName)
 {
-    if (!copyFrom.fileNodeExtant())
+    if (!copyFrom.fileNodeExtant()) return;
     if (!fileOpPending->checkAndClaim()) return;
-
-    ae_globals::get_connection()->setCurrentRemoteWorkingDirectory(copyFrom.getContainingPath());
 
     qCDebug(agaveAppLayer, "Starting copy procedure: %s to %s",
            qPrintable(copyFrom.getFullPath()),

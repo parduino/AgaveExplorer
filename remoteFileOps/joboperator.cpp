@@ -73,6 +73,22 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
 
     bool notDone = false;
 
+    QList<QString> toDel;
+    for (auto itr = jobData.begin(); itr != jobData.end(); itr++)
+    {
+        if (listHasJobId(theData, itr.key()))
+        {
+            continue;
+        }
+        toDel.append(itr.key());
+    }
+
+    for (QString jobID : toDel)
+    {
+        JobListNode * toDel = jobData.take(jobID);
+        toDel->deleteLater();
+    }
+
     for (auto itr = theData.rbegin(); itr != theData.rend(); itr++)
     {
         if (jobData.contains((*itr).getID()))
@@ -97,6 +113,18 @@ void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJob
     {
         QTimer::singleShot(5000, this, SLOT(demandJobDataRefresh()));
     }
+}
+
+bool JobOperator::listHasJobId(QList<RemoteJobData> theData, QString toFind)
+{
+    for (auto itr = theData.rbegin(); itr != theData.rend(); itr++)
+    {
+        if (toFind == (*itr).getID())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 QMap<QString, const RemoteJobData *> JobOperator::getJobsList()

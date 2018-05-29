@@ -76,6 +76,8 @@ private slots:
     void refreshRunningJobList(RequestState replyState, QList<RemoteJobData> theData);
 
 private:
+    static bool listHasJobId(QList<RemoteJobData> theData, QString toFind);
+
     QMap<QString, JobListNode *> jobData;
     RemoteDataReply * currentJobReply = NULL;
 
