@@ -48,7 +48,8 @@ AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent
 {
     ae_globals::set_Driver(this);
 
-    if (debug)
+    inDebugMode = debug;
+    if (inDebugMode)
     {
         QLoggingCategory::installFilter(debugCategoryFilterOn);
     }

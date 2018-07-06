@@ -115,17 +115,16 @@ HEADERS += \
     remoteModelViews/remotefileitem.h \
     ../AgaveClientInterface/agaveInterfaces/agavethread.h \
     utilFuncs/fixforssl.h
-
 FORMS += \
     instances/explorerwindow.ui \
     utilFuncs/authform.ui \
     utilFuncs/copyrightdialog.ui \
     utilFuncs/singlelinedialog.ui
 
-#win32 {
+win32 {
 FORMS += \
     utilFuncs/fixforssl.ui
-#}
+}
 
 RESOURCES += \
     SimCenterCommon/commonResources.qrc \

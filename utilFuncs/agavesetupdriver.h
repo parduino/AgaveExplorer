@@ -90,7 +90,7 @@ protected:
     FileOperator * myFileHandle = NULL;
 
     bool doingShutdown = false;
-
+    bool inDebugMode;
 };
 
 #endif // AGAVESETUPDRIVER_H

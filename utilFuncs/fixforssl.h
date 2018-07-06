@@ -39,8 +39,9 @@ private:
     QNetworkAccessManager networkManger;
 };
 #else
-class FixForSSL
+class FixForSSL : public QObject
 {
+    Q_OBJECT
 public:
     FixForSSL();
     static bool performSSLcheck();
