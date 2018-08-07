@@ -55,7 +55,7 @@ public:
 private:
     void appendToRowList(RemoteFileItem * toAdd);
 
-    RemoteFileItem * myRowLeader = NULL;
+    RemoteFileItem * myRowLeader = nullptr;
     QList<RemoteFileItem*> rowList;
     FileNodeRef myFile;
 };

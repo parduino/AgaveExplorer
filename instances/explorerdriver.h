@@ -68,7 +68,7 @@ private slots:
 private:
 
 
-    ExplorerWindow * mainWindow = NULL;
+    ExplorerWindow * mainWindow = nullptr;
 };
 
 #endif // EXPLORERDRIVER_H

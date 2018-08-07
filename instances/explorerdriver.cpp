@@ -65,7 +65,7 @@ ExplorerDriver::ExplorerDriver(QObject *parent, bool debug) : AgaveSetupDriver(p
 
 ExplorerDriver::~ExplorerDriver()
 {
-    if (mainWindow != NULL) delete mainWindow;
+    if (mainWindow != nullptr) delete mainWindow;
 }
 
 void ExplorerDriver::startup()
@@ -82,7 +82,7 @@ void ExplorerDriver::startup()
 
 void ExplorerDriver::closeAuthScreen()
 {
-    if (mainWindow == NULL)
+    if (mainWindow == nullptr)
     {
         ae_globals::displayFatalPopup("Fatal Error in window system: No Main Window");
         return;
@@ -95,15 +95,15 @@ void ExplorerDriver::closeAuthScreen()
     //The dynamics of this may be different in windows. TODO: Find a more cross-platform solution
     QObject::connect(mainWindow->windowHandle(),SIGNAL(visibleChanged(bool)),this, SLOT(subWindowHidden(bool)));
 
-    if (authWindow != NULL)
+    if (authWindow != nullptr)
     {
         QObject::disconnect(authWindow->windowHandle(),SIGNAL(visibleChanged(bool)),this, SLOT(subWindowHidden(bool)));
         authWindow->hide();
         authWindow->deleteLater();
-        authWindow = NULL;
+        authWindow = nullptr;
     }
 
-    AgaveTaskReply * agaveList = ((AgaveThread *)theConnectThread)->getAgaveAppList();
+    AgaveTaskReply * agaveList = (qobject_cast<AgaveThread *>(theConnectThread))->getAgaveAppList();
 
     QObject::connect(agaveList, SIGNAL(haveAgaveAppList(RequestState,QVariantList)), this, SLOT(loadAppList(RequestState,QVariantList)));
 }

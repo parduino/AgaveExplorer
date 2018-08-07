@@ -165,7 +165,7 @@ void ExplorerWindow::agaveCommandInvoked()
         paramName = paramName.append(*itr);
 
         QLineEdit * theInput = ui->AgaveParamWidget->findChild<QLineEdit *>(paramName);
-        if (theInput != NULL)
+        if (theInput != nullptr)
         {
             allInputs.insert((*itr),theInput->text());
             qCDebug(agaveAppLayer, "%s : %s", qPrintable(*itr), qPrintable(theInput->text()));
@@ -173,7 +173,7 @@ void ExplorerWindow::agaveCommandInvoked()
     }
 
     RemoteDataReply * theTask = ae_globals::get_connection()->runRemoteJob(selectedAgaveApp,allInputs,workingDir);
-    if (theTask == NULL)
+    if (theTask == nullptr)
     {
         qCDebug(agaveAppLayer, "Unable to invoke task");
         return;
@@ -384,7 +384,7 @@ void ExplorerWindow::refreshMenuItem()
 
 void ExplorerWindow::jobRightClickMenu(QPoint)
 {
-    if (ae_globals::get_job_handle() == NULL)
+    if (ae_globals::get_job_handle() == nullptr)
     {
         return;
     }

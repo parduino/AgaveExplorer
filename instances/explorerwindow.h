@@ -63,7 +63,7 @@ class ExplorerWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit ExplorerWindow(QWidget *parent = 0);
+    explicit ExplorerWindow(QWidget *parent = nullptr);
     ~ExplorerWindow();
 
     void startAndShow();

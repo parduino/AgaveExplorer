@@ -160,7 +160,7 @@ private:
 
     void emitStdFileOpErr(QString errString, RequestState errState);
 
-    FileTreeNode * rootFileNode = NULL;
+    FileTreeNode * rootFileNode = nullptr;
 
     EasyBoolLock * fileOpPending;
     FileTreeNode * rememberTargetFile;

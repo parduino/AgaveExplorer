@@ -48,7 +48,7 @@ void FixForSSL::showLicense()
 
 void FixForSSL::getSSL()
 {
-    QNetworkReply * clientReply = NULL;
+    QNetworkReply * clientReply = nullptr;
 
     QString activeURL = "http://indy.fulgan.com/SSL/openssl-1.0.2k-x64_86-win64.zip";
 
@@ -57,7 +57,7 @@ void FixForSSL::getSSL()
 
     clientReply = networkManger.get(*clientRequest);
 
-    if (clientReply == NULL)
+    if (clientReply == nullptr)
     {
         ae_globals::displayFatalPopup("CWE program unable to open http conenction. Please check your internet connection and try again.");
         return;

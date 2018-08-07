@@ -72,12 +72,12 @@ AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent
 
 AgaveSetupDriver::~AgaveSetupDriver()
 {
-    if (authWindow != NULL) delete authWindow;
+    if (authWindow != nullptr) delete authWindow;
 
-    if (myJobHandle != NULL) delete myJobHandle;
-    if (myFileHandle != NULL) delete myFileHandle;
+    if (myJobHandle != nullptr) delete myJobHandle;
+    if (myFileHandle != nullptr) delete myFileHandle;
 
-    if (theConnectThread != NULL)
+    if (theConnectThread != nullptr)
     {
         theConnectThread->quit();
         theConnectThread->wait();
@@ -136,7 +136,7 @@ FileOperator * AgaveSetupDriver::getFileHandler()
 
 void AgaveSetupDriver::getAuthReply(RequestState authReply)
 {
-    if ((authReply == RequestState::GOOD) && (authWindow != NULL) && (authWindow->isVisible()))
+    if ((authReply == RequestState::GOOD) && (authWindow != nullptr) && (authWindow->isVisible()))
     {
         closeAuthScreen();
     }
@@ -158,10 +158,10 @@ void AgaveSetupDriver::shutdown()
     }
     doingShutdown = true;
     qCDebug(agaveAppLayer, "Beginning graceful shutdown.");
-    if (theConnectThread != NULL)
+    if (theConnectThread != nullptr)
     {
         RemoteDataReply * revokeTask = theConnectThread->closeAllConnections();
-        if (revokeTask != NULL)
+        if (revokeTask != nullptr)
         {
             QObject::connect(revokeTask, SIGNAL(connectionsClosed(RequestState)), this, SLOT(shutdownCallback()));
             qCDebug(agaveAppLayer, "Waiting on outstanding tasks");

@@ -49,7 +49,7 @@ class HeaderWidget : public QFrame
 {
     Q_OBJECT
 public:
-    explicit HeaderWidget(QWidget *parent = 0);
+    explicit HeaderWidget(QWidget *parent = nullptr);
     ~HeaderWidget();
 
     void setHeadingText(const QString &newText);

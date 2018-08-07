@@ -58,12 +58,12 @@ FileNodeRef RemoteFileTree::getSelectedFile()
 
     if (indexList.isEmpty()) return fail;
     QStandardItemModel * theModel = qobject_cast<QStandardItemModel *>(this->model());
-    if (theModel == NULL) return fail;
+    if (theModel == nullptr) return fail;
 
     QStandardItem * theItem = theModel->itemFromIndex(indexList.at(0));
 
-    RemoteFileItem * retNode = (RemoteFileItem *)(theItem);
-    if (retNode == NULL) return fail;
+    RemoteFileItem * retNode = dynamic_cast<RemoteFileItem *>(theItem);
+    if (retNode == nullptr) return fail;
     return retNode->getFile();
 }
 
@@ -72,7 +72,7 @@ void RemoteFileTree::selectRowByFile(FileNodeRef toSelect)
     if (toSelect.getFullPath() == getSelectedFile().getFullPath()) return;
 
     RemoteFileItem * nodeToFind = myModel->getItemByFile(toSelect);
-    if (nodeToFind == NULL)
+    if (nodeToFind == nullptr)
     {
         clearSelection();
         return;
@@ -102,9 +102,9 @@ void RemoteFileTree::folderExpanded(QModelIndex fileIndex)
 void RemoteFileTree::fileEntryTouched(QModelIndex itemTouched)
 {
     this->selectionModel()->clearSelection();
-    QStandardItemModel * dataStore = (QStandardItemModel *)this->model();
+    QStandardItemModel * dataStore = qobject_cast<QStandardItemModel *>(this->model());
     QStandardItem * selectedItem = dataStore->itemFromIndex(itemTouched);
-    if (selectedItem == NULL)
+    if (selectedItem == nullptr)
     {
         return;
     }
@@ -120,7 +120,7 @@ void RemoteFileTree::forceSelectionRefresh()
 void RemoteFileTree::selectRowByItem(QStandardItem *clickedNode)
 {
     QStandardItem * parentNode = clickedNode->parent();
-    if (parentNode == NULL)
+    if (parentNode == nullptr)
     {
         parentNode = clickedNode->model()->invisibleRootItem();
     }

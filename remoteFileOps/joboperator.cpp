@@ -42,7 +42,7 @@
 #include "../AgaveClientInterface/remotejobdata.h"
 #include "joblistnode.h"
 
-JobOperator::JobOperator(QObject * parent) : QObject((QObject *)parent)
+JobOperator::JobOperator(QObject * parent) : QObject(qobject_cast<QObject *>(parent))
 {
     theJobList.setHorizontalHeaderLabels({"Task Name", "State", "Agave App", "Time Created", "Agave ID"});
 }
@@ -63,7 +63,7 @@ void JobOperator::linkToJobLister(RemoteJobLister * newLister)
 void JobOperator::refreshRunningJobList(RequestState replyState, QList<RemoteJobData> theData)
 {
     //Note: RemoteDataReply destroys itself after signal
-    currentJobReply = NULL;
+    currentJobReply = nullptr;
     if (replyState != RequestState::GOOD)
     {
         ae_globals::displayPopup("Error: unable to list jobs. Please check your network connection and try again.", "Network Error:");
@@ -152,7 +152,7 @@ void JobOperator::requestJobDetails(const RemoteJobData *toFetch)
 
     RemoteDataReply * jobReply = ae_globals::get_connection()->getJobDetails(toFetch->getID());
 
-    if (jobReply == NULL) return; //TODO: Consider an error message here
+    if (jobReply == nullptr) return; //TODO: Consider an error message here
 
     realNode->setDetailTask(jobReply);
 }
@@ -166,7 +166,7 @@ const RemoteJobData * JobOperator::findJobByID(QString idToFind)
 {
     if (!jobData.contains(idToFind))
     {
-        return NULL;
+        return nullptr;
     }
 
     return jobData.value(idToFind)->getData();
@@ -174,7 +174,7 @@ const RemoteJobData * JobOperator::findJobByID(QString idToFind)
 
 void JobOperator::demandJobDataRefresh()
 {
-    if (currentJobReply != NULL)
+    if (currentJobReply != nullptr)
     {
         return;
     }

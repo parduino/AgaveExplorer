@@ -46,7 +46,7 @@
 #include "../utilFuncs/agavesetupdriver.h"
 #include "../ae_globals.h"
 
-FileOperator::FileOperator(AgaveSetupDriver *parent) : QObject( (QObject *)parent)
+FileOperator::FileOperator(AgaveSetupDriver *parent) : QObject( qobject_cast<QObject *>(parent))
 {
     //Note: will be deconstructed with parent
     //TODO: Replace these with mutexes when implementing threading
@@ -61,7 +61,7 @@ FileOperator::~FileOperator()
 
 void FileOperator::resetFileData()
 {
-    if (rootFileNode != NULL)
+    if (rootFileNode != nullptr)
     {
         rootFileNode->deleteLater();
     }
@@ -78,13 +78,13 @@ void FileOperator::totalResetErrorProcedure()
 
 FileTreeNode * FileOperator::getFileNodeFromNodeRef(const FileNodeRef &thedata, bool verifyTimestamp)
 {
-    if (thedata.isNil()) return NULL;
+    if (thedata.isNil()) return nullptr;
     FileTreeNode * ret = rootFileNode->getNodeWithName(thedata.getFullPath());
-    if (ret == NULL) return NULL;
+    if (ret == nullptr) return nullptr;
 
     if (!verifyTimestamp) return ret;
 
-    if (ret->getFileData().getTimestamp() != thedata.getTimestamp()) return NULL;
+    if (ret->getFileData().getTimestamp() != thedata.getTimestamp()) return nullptr;
     return ret;
 }
 
@@ -92,7 +92,7 @@ void FileOperator::enactRootRefresh()
 {
     qCDebug(agaveAppLayer, "Enacting refresh of root.");
     RemoteDataReply * theReply = ae_globals::get_connection()->remoteLS("/");
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         //TODO: consider a more fatal error here
         totalResetErrorProcedure();
@@ -105,7 +105,7 @@ void FileOperator::enactRootRefresh()
 void FileOperator::enactFolderRefresh(const FileNodeRef &selectedNode, bool clearData)
 {
     FileTreeNode * trueNode = getFileNodeFromNodeRef(selectedNode);
-    if (trueNode == NULL) return;
+    if (trueNode == nullptr) return;
     if (clearData)
     {
         trueNode->deleteFolderContentsData();
@@ -119,7 +119,7 @@ void FileOperator::enactFolderRefresh(const FileNodeRef &selectedNode, bool clea
 
     qCDebug(agaveAppLayer, "File Path Needs refresh: %s", qPrintable(fullFilePath));
     RemoteDataReply * theReply = ae_globals::get_connection()->remoteLS(fullFilePath);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         //TODO: consider a more fatal error here
         totalResetErrorProcedure();
@@ -142,7 +142,7 @@ void FileOperator::sendDeleteReq(const FileNodeRef &selectedNode)
     QString targetFile = selectedNode.getFullPath();
     qCDebug(agaveAppLayer, "Starting delete procedure: %s",qPrintable(targetFile));
     RemoteDataReply * theReply = ae_globals::get_connection()->deleteFile(targetFile);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         //TODO, should have more meaningful error here
@@ -177,7 +177,7 @@ void FileOperator::sendMoveReq(const FileNodeRef &moveFrom, QString newName)
             qPrintable(moveFrom.getFullPath()),
             qPrintable(newName));
     RemoteDataReply * theReply = ae_globals::get_connection()->moveFile(moveFrom.getFullPath(), newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         //TODO, should have more meaningful error here
@@ -215,7 +215,7 @@ void FileOperator::sendCopyReq(const FileNodeRef &copyFrom, QString newName)
            qPrintable(copyFrom.getFullPath()),
            qPrintable(newName));
     RemoteDataReply * theReply = ae_globals::get_connection()->copyFile(copyFrom.getFullPath(), newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         //TODO: Better error here
@@ -250,7 +250,7 @@ void FileOperator::sendRenameReq(const FileNodeRef &selectedNode, QString newNam
            qPrintable(selectedNode.getFullPath()),
            qPrintable(newName));
     RemoteDataReply * theReply = ae_globals::get_connection()->renameFile(selectedNode.getFullPath(), newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         //TODO, should have more meaningful error here
@@ -288,7 +288,7 @@ void FileOperator::sendCreateFolderReq(const FileNodeRef &selectedNode, QString 
            qPrintable(selectedNode.getFullPath()),
            qPrintable(newName));
     RemoteDataReply * theReply = ae_globals::get_connection()->mkRemoteDir(selectedNode.getFullPath(), newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         //TODO, should have more meaningful error here
@@ -323,7 +323,7 @@ void FileOperator::sendUploadReq(const FileNodeRef &uploadTarget, QString localF
     qCDebug(agaveAppLayer, "Starting upload procedure: %s to %s", qPrintable(localFile),
            qPrintable(uploadTarget.getFullPath()));
     RemoteDataReply * theReply = ae_globals::get_connection()->uploadFile(uploadTarget.getFullPath(), localFile);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         return;
@@ -339,7 +339,7 @@ void FileOperator::sendUploadBuffReq(const FileNodeRef &uploadTarget, QByteArray
     if (!fileOpPending->checkAndClaim()) return;
     qCDebug(agaveAppLayer, "Starting upload procedure: to %s", qPrintable(uploadTarget.getFullPath()));
     RemoteDataReply * theReply = ae_globals::get_connection()->uploadBuffer(uploadTarget.getFullPath(), fileBuff, newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         return;
@@ -372,7 +372,7 @@ void FileOperator::sendDownloadReq(const FileNodeRef &targetFile, QString localD
     qCDebug(agaveAppLayer, "Starting download procedure: %s to %s", qPrintable(targetFile.getFullPath()),
            qPrintable(localDest));
     RemoteDataReply * theReply = ae_globals::get_connection()->downloadFile(localDest, targetFile.getFullPath());
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         fileOpPending->release();
         return;
@@ -407,7 +407,7 @@ void FileOperator::sendDownloadBuffReq(const FileNodeRef &targetFile)
     }
     qCDebug(agaveAppLayer, "Starting download buffer procedure: %s", qPrintable(targetFile.getFullPath()));
     RemoteDataReply * theReply = ae_globals::get_connection()->downloadBuffer(targetFile.getFullPath());
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         return;
     }
@@ -571,7 +571,7 @@ void FileOperator::sendCompressReq(const FileNodeRef &selectedFolder)
         return;
     }
     RemoteDataReply * compressTask = ae_globals::get_connection()->runRemoteJob("compress",oneInput,selectedFolder.getFullPath());
-    if (compressTask == NULL)
+    if (compressTask == nullptr)
     {
         fileOpPending->release();
         //TODO: give reasonable error
@@ -611,7 +611,7 @@ void FileOperator::sendDecompressReq(const FileNodeRef &selectedFolder)
     oneInput.insert("inputFile",selectedFolder.getFullPath());
 
     RemoteDataReply * decompressTask = ae_globals::get_connection()->runRemoteJob("extract",oneInput,"");
-    if (decompressTask == NULL)
+    if (decompressTask == nullptr)
     {
         fileOpPending->release();
         //TODO: give reasonable error
@@ -687,7 +687,7 @@ void FileOperator::lsClosestNode(QString fullPath, bool clearData)
 void FileOperator::lsClosestNodeToParent(QString fullPath, bool clearData)
 {
     FileTreeNode * nodeToRefresh = rootFileNode->getNodeWithName(fullPath);
-    if (nodeToRefresh != NULL)
+    if (nodeToRefresh != nullptr)
     {
         if (!nodeToRefresh->isRootNode())
         {
@@ -704,13 +704,13 @@ void FileOperator::lsClosestNodeToParent(QString fullPath, bool clearData)
 bool FileOperator::fileStillExtant(const FileNodeRef &theFile)
 {
     FileTreeNode * scanNode = getFileNodeFromNodeRef(theFile);
-    return (scanNode != NULL);
+    return (scanNode != nullptr);
 }
 
 NodeState FileOperator::getFileNodeState(const FileNodeRef &theFile)
 {
     FileTreeNode * scanNode = getFileNodeFromNodeRef(theFile);
-    if (scanNode == NULL) return NodeState::NON_EXTANT;
+    if (scanNode == nullptr) return NodeState::NON_EXTANT;
     return scanNode->getNodeState();
 }
 
@@ -718,9 +718,9 @@ bool FileOperator::isAncestorOf(const FileNodeRef &parent, const FileNodeRef &ch
 {
     //Also returns false if one or the other is not extant
     FileTreeNode *  parentNode = getFileNodeFromNodeRef(parent);
-    if (parentNode == NULL) return false;
+    if (parentNode == nullptr) return false;
     FileTreeNode *  childNode = getFileNodeFromNodeRef(child);
-    if (childNode == NULL) return false;
+    if (childNode == nullptr) return false;
 
     return childNode->isChildOf(parentNode);
 }
@@ -728,12 +728,12 @@ bool FileOperator::isAncestorOf(const FileNodeRef &parent, const FileNodeRef &ch
 const FileNodeRef FileOperator::speculateFileWithName(QString fullPath, bool folder)
 {
     FileTreeNode * scanNode = rootFileNode->getNodeWithName(fullPath);
-    if (scanNode != NULL)
+    if (scanNode != nullptr)
     {
         return scanNode->getFileData();
     }
     scanNode = rootFileNode->getClosestNodeWithName(fullPath);
-    if (scanNode == NULL)
+    if (scanNode == nullptr)
     {
         FileNodeRef ret;
         return ret;
@@ -767,7 +767,7 @@ const FileNodeRef FileOperator::speculateFileWithName(const FileNodeRef &baseNod
     for (auto itr = pathParts.cbegin(); itr != pathParts.cend(); itr++)
     {
         FileTreeNode * nextNode = searchNode->getChildNodeWithName(*itr);
-        if (nextNode != NULL)
+        if (nextNode != nullptr)
         {
             searchNode = nextNode;
             continue;
@@ -807,7 +807,7 @@ const FileNodeRef FileOperator::speculateFileWithName(const FileNodeRef &baseNod
             enactFolderRefresh(searchNode->getFileData());
         }
     }
-    else if (searchNode->getFileBuffer() == NULL)
+    else if (searchNode->getFileBuffer() == nullptr)
     {
         sendDownloadBuffReq(searchNode->getFileData());
     }
@@ -819,26 +819,26 @@ const FileNodeRef FileOperator::getChildWithName(const FileNodeRef &baseFile, QS
 {
     FileNodeRef fail;
     FileTreeNode * baseNode = getFileNodeFromNodeRef(baseFile);
-    if (baseNode == NULL) return fail; //TODO: Consider exception handling here
+    if (baseNode == nullptr) return fail; //TODO: Consider exception handling here
     FileTreeNode * childNode = baseNode->getChildNodeWithName(childName);
-    if (childNode == NULL) return fail;
+    if (childNode == nullptr) return fail;
     return childNode->getFileData();
 }
 
 const QByteArray FileOperator::getFileBuffer(const FileNodeRef &baseFile)
 {
     FileTreeNode * baseNode = getFileNodeFromNodeRef(baseFile);
-    if (baseNode == NULL) return NULL; //TODO: Consider exception handling here
+    if (baseNode == nullptr) return nullptr; //TODO: Consider exception handling here
     QByteArray ret;
     QByteArray * storedArray = baseNode->getFileBuffer();
-    if (storedArray == NULL) return ret;
+    if (storedArray == nullptr) return ret;
     return *storedArray;
 }
 
 void FileOperator::setFileBuffer(const FileNodeRef &theFile, const QByteArray * toSet)
 {
     FileTreeNode * baseNode = getFileNodeFromNodeRef(theFile);
-    if (baseNode == NULL) return; //TODO: Consider exception handling here
+    if (baseNode == nullptr) return; //TODO: Consider exception handling here
     baseNode->setFileBuffer(toSet);
 }
 
@@ -846,9 +846,9 @@ FileNodeRef FileOperator::getParent(const FileNodeRef &theFile)
 {
     FileNodeRef fail;
     FileTreeNode * baseNode = getFileNodeFromNodeRef(theFile);
-    if (baseNode == NULL) return fail;
+    if (baseNode == nullptr) return fail;
     FileTreeNode * parentNode = baseNode->getParentNode();
-    if (parentNode == NULL) return fail;
+    if (parentNode == nullptr) return fail;
     return parentNode->getFileData();
 }
 
@@ -856,7 +856,7 @@ QList<FileNodeRef> FileOperator::getChildList(const FileNodeRef &theFile)
 {
     QList<FileNodeRef> ret;
     FileTreeNode * baseNode = getFileNodeFromNodeRef(theFile);
-    if (baseNode == NULL) return ret; //TODO: Consider exception handling here
+    if (baseNode == nullptr) return ret; //TODO: Consider exception handling here
     for (FileTreeNode * aNode : baseNode->getChildList())
     {
         ret.append(aNode->getFileData());
@@ -867,7 +867,7 @@ QList<FileNodeRef> FileOperator::getChildList(const FileNodeRef &theFile)
 bool FileOperator::nodeIsRoot(const FileNodeRef &theFile)
 {
     FileTreeNode * theNode = getFileNodeFromNodeRef(theFile);
-    if (theNode == NULL) return false;
+    if (theNode == nullptr) return false;
     return theNode->isRootNode();
 }
 
@@ -936,7 +936,7 @@ bool FileOperator::recursiveDownloadRetrivalHelper(FileTreeNode * nodeToCheck)
 {
     if (nodeToCheck->isFile())
     {
-        if (nodeToCheck->getFileBuffer() == NULL)
+        if (nodeToCheck->getFileBuffer() == nullptr)
         {
             sendDownloadBuffReq(nodeToCheck->getFileData());
             return false;
@@ -1013,7 +1013,7 @@ bool FileOperator::emitBufferToFile(QDir containingDir, FileTreeNode * nodeToGet
     if (containingDir.exists(nodeToGet->getFileData().getFileName())) return false;
 
     QFile newFile(containingDir.absoluteFilePath(nodeToGet->getFileData().getFileName()));
-    if (nodeToGet->getFileBuffer() == NULL) return false;
+    if (nodeToGet->getFileBuffer() == nullptr) return false;
     if (!newFile.open(QFile::WriteOnly)) return false;
     if (newFile.write(*(nodeToGet->getFileBuffer())) < 0) return false;
     newFile.close();
@@ -1027,7 +1027,7 @@ void FileOperator::recursiveUploadProcessRetry()
 
     RecursiveErrorCodes theError = RecursiveErrorCodes::NONE;
     FileTreeNode * trueRemoteHead = recursiveRemoteHead->getChildNodeWithName(recursiveLocalHead.dirName());
-    if (trueRemoteHead == NULL)
+    if (trueRemoteHead == nullptr)
     {
         sendRecursiveCreateFolderReq(recursiveRemoteHead, recursiveLocalHead.dirName());
         return;
@@ -1088,7 +1088,7 @@ bool FileOperator::recursiveUploadHelper(FileTreeNode * nodeToSend, QDir localPa
             QDir childDir = anEntry.dir();
             childDir.cd(anEntry.fileName());
             FileTreeNode * childNode = nodeToSend->getChildNodeWithName(childDir.dirName());
-            if (childNode == NULL)
+            if (childNode == nullptr)
             {
                 if (!sendRecursiveCreateFolderReq(nodeToSend, childDir.dirName()))
                 {
@@ -1101,7 +1101,7 @@ bool FileOperator::recursiveUploadHelper(FileTreeNode * nodeToSend, QDir localPa
         else if (anEntry.isFile())
         {
             FileTreeNode * childNode = nodeToSend->getChildNodeWithName(anEntry.fileName());
-            if (childNode == NULL)
+            if (childNode == nullptr)
             {
                 if (!sendRecursiveUploadReq(nodeToSend, anEntry.absoluteFilePath()))
                 {
@@ -1128,7 +1128,7 @@ bool FileOperator::sendRecursiveCreateFolderReq(FileTreeNode * selectedNode, QSt
            qPrintable(selectedNode->getFileData().getFullPath()),
            qPrintable(newName));
     RemoteDataReply * theReply = ae_globals::get_connection()->mkRemoteDir(selectedNode->getFileData().getFullPath(), newName);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         recursivefileOpPending->release();
         return false;
@@ -1144,7 +1144,7 @@ bool FileOperator::sendRecursiveUploadReq(FileTreeNode * uploadTarget, QString l
     qCDebug(agaveAppLayer, "Starting recursively enacted upload procedure: %s to %s", qPrintable(localFile),
            qPrintable(uploadTarget->getFileData().getFullPath()));
     RemoteDataReply * theReply = ae_globals::get_connection()->uploadFile(uploadTarget->getFileData().getFullPath(), localFile);
-    if (theReply == NULL)
+    if (theReply == nullptr)
     {
         recursivefileOpPending->release();
         return false;

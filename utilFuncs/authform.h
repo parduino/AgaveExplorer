@@ -51,7 +51,7 @@ class AuthForm : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = 0);
+    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = nullptr);
     ~AuthForm();
 
 private slots:

@@ -60,7 +60,7 @@ class RemoteFileTree : public QTreeView
     Q_OBJECT
 
 public:
-    explicit RemoteFileTree(QWidget *parent = 0);
+    explicit RemoteFileTree(QWidget *parent = nullptr);
 
     FileNodeRef getSelectedFile();
     void selectRowByFile(FileNodeRef toSelect);
@@ -79,7 +79,7 @@ private slots:
 private:
     void selectRowByItem(QStandardItem *linkedItem);
 
-    RemoteFileModel * myModel = NULL;
+    RemoteFileModel * myModel = nullptr;
 };
 
 #endif // REMOTEFILEWINDOW_H

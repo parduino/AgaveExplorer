@@ -47,7 +47,7 @@ class SelectedFileLabel : public QLabel
     Q_OBJECT
 
 public:
-    SelectedFileLabel(QWidget *parent=Q_NULLPTR);
+    SelectedFileLabel(QWidget *parent = nullptr);
 
     void connectFileTreeWidget(RemoteFileTree * connectedTree);
 
@@ -55,7 +55,7 @@ private slots:
     void newSelectedItem(FileNodeRef newFileData);
 
 private:
-    RemoteFileTree * myFileTree = NULL;
+    RemoteFileTree * myFileTree = nullptr;
 };
 
 #endif // SELECTEDFILELABEL_H

@@ -65,11 +65,11 @@ private slots:
     void deliverJobDetails(RequestState taskState, RemoteJobData fullJobData);
 
 private:
-    QStandardItemModel * myModel = NULL;
-    LinkedStandardItem * myModelItem = NULL;
+    QStandardItemModel * myModel = nullptr;
+    LinkedStandardItem * myModelItem = nullptr;
     RemoteJobData myData;
 
-    RemoteDataReply * myDetailTask = NULL;
+    RemoteDataReply * myDetailTask = nullptr;
 };
 
 #endif // REMOTEJOBENTRY_H

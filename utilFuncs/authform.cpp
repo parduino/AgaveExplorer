@@ -92,7 +92,7 @@ void AuthForm::performAuth()
 
     RemoteDataReply * authReply = theConnection->performAuth(unameText, passText);
 
-    if (authReply == NULL)
+    if (authReply == nullptr)
     {
         ae_globals::displayFatalPopup("Unable to connect to DesignSafe. Please check internet connection.");
         return;

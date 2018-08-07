@@ -59,7 +59,7 @@ RemoteFileItem::RemoteFileItem(FileNodeRef fileInfo) : QStandardItem()
 RemoteFileItem::RemoteFileItem(RemoteFileItem * rowLeader) : QStandardItem()
 {
     myFile = FileNodeRef::nil();
-    if (rowLeader == NULL)
+    if (rowLeader == nullptr)
     {
         qCDebug(agaveAppLayer, "Warning: Invalid Remote File Item Construction");
         return;
@@ -70,27 +70,27 @@ RemoteFileItem::RemoteFileItem(RemoteFileItem * rowLeader) : QStandardItem()
 
 RemoteFileItem * RemoteFileItem::getRowHeader()
 {
-    if (myRowLeader == NULL) return this;
+    if (myRowLeader == nullptr) return this;
     return myRowLeader->getRowHeader();
 }
 
 QList<RemoteFileItem*> RemoteFileItem::getRowList()
 {
-    if (myRowLeader == NULL) return rowList;
+    if (myRowLeader == nullptr) return rowList;
     return myRowLeader->getRowList();
 }
 
 FileNodeRef RemoteFileItem::getFile()
 {
-    if (myRowLeader == NULL) return myFile;
+    if (myRowLeader == nullptr) return myFile;
     return myRowLeader->getFile();
 }
 
 bool RemoteFileItem::parentOfPlaceholder()
 {
     if (!getRowHeader()->hasChildren()) return false;
-    RemoteFileItem * nodeToCheck = (RemoteFileItem *)(getRowHeader()->child(0,0));
-    if (nodeToCheck == NULL) return false;
+    RemoteFileItem * nodeToCheck = dynamic_cast<RemoteFileItem *>(getRowHeader()->child(0,0));
+    if (nodeToCheck == nullptr) return false;
     if (nodeToCheck->myFile.isNil()) return true;
     return false;
 }

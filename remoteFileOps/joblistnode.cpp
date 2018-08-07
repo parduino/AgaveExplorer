@@ -44,7 +44,7 @@
 JobListNode::JobListNode(RemoteJobData newData, QStandardItemModel * theModel) : QObject(ae_globals::get_job_handle())
 {
     myModel = theModel;
-    if (myModel == NULL)
+    if (myModel == nullptr)
     {
         this->deleteLater();
         return;
@@ -55,10 +55,10 @@ JobListNode::JobListNode(RemoteJobData newData, QStandardItemModel * theModel) :
 
 JobListNode::~JobListNode()
 {
-    if (myModelItem != NULL)
+    if (myModelItem != nullptr)
     {
         myModel->removeRow(myModelItem->row());
-        myModelItem = NULL;
+        myModelItem = nullptr;
     }
 }
 
@@ -73,7 +73,7 @@ void JobListNode::setData(RemoteJobData newData)
 
     QList<QStandardItem *> myModelRow;
 
-    if (myModelItem == NULL)
+    if (myModelItem == nullptr)
     {
         for (int i = 0; i < myModel->columnCount(); i++)
         {
@@ -101,11 +101,11 @@ void JobListNode::setData(RemoteJobData newData)
 
     int i = 0;
     QStandardItem * headerItem = myModel->horizontalHeaderItem(i);
-    while (headerItem != NULL)
+    while (headerItem != nullptr)
     {
         QString headerText = headerItem->text();
         QStandardItem * dataEntry = myModelRow.at(i);
-        if (dataEntry == NULL)
+        if (dataEntry == nullptr)
         {
             qCDebug(agaveAppLayer, "ERROR: Column Mismatch in job list.");
             return;
@@ -160,14 +160,14 @@ void JobListNode::setDetails(QMap<QString, QString> inputs, QMap<QString, QStrin
 
 bool JobListNode::haveDetailTask()
 {
-    return (myDetailTask != NULL);
+    return (myDetailTask != nullptr);
 }
 
 void JobListNode::setDetailTask(RemoteDataReply * newTask)
 {
-    if (myDetailTask != NULL)
+    if (myDetailTask != nullptr)
     {
-        QObject::disconnect(myDetailTask, 0, this, 0);
+        QObject::disconnect(myDetailTask, nullptr, this, nullptr);
     }
     myDetailTask = newTask;
     QObject::connect(myDetailTask, SIGNAL(haveJobDetails(RequestState,RemoteJobData)),
@@ -178,7 +178,7 @@ void JobListNode::deliverJobDetails(RequestState taskState, RemoteJobData fullJo
 {
     if (myDetailTask == QObject::sender())
     {
-        myDetailTask = NULL;
+        myDetailTask = nullptr;
     }
     if (taskState != RequestState::GOOD)
     {

@@ -37,7 +37,7 @@
 
 #include "utilFuncs/agavesetupdriver.h"
 
-AgaveSetupDriver * ae_globals::theDriver = NULL;
+AgaveSetupDriver * ae_globals::theDriver = nullptr;
 
 ae_globals::ae_globals() {}
 
@@ -130,7 +130,7 @@ AgaveSetupDriver * ae_globals::get_Driver()
 
 void ae_globals::set_Driver(AgaveSetupDriver * newDriver)
 {
-    if (theDriver != NULL)
+    if (theDriver != nullptr)
     {
         displayFatalPopup("Program Driver object has multiple definitions. Please note the circumstances of this error and report it to the developers.", "Internal Error");
         return;
@@ -140,18 +140,18 @@ void ae_globals::set_Driver(AgaveSetupDriver * newDriver)
 
 RemoteDataThread * ae_globals::get_connection()
 {
-    if (theDriver == NULL) return NULL;
+    if (theDriver == nullptr) return nullptr;
     return theDriver->getDataConnection();
 }
 
 JobOperator * ae_globals::get_job_handle()
 {
-    if (theDriver == NULL) return NULL;
+    if (theDriver == nullptr) return nullptr;
     return theDriver->getJobHandler();
 }
 
 FileOperator * ae_globals::get_file_handle()
 {
-    if (theDriver == NULL) return NULL;
+    if (theDriver == nullptr) return nullptr;
     return theDriver->getFileHandler();
 }

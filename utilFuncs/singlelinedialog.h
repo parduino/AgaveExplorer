@@ -47,7 +47,7 @@ class SingleLineDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SingleLineDialog(QString textLine, QString defaultInput, QWidget *parent = 0);
+    explicit SingleLineDialog(QString textLine, QString defaultInput, QWidget *parent = nullptr);
     ~SingleLineDialog();
 
     QString getInputText();

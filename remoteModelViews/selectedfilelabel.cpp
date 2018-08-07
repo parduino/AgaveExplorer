@@ -46,12 +46,12 @@ SelectedFileLabel::SelectedFileLabel(QWidget *parent) : QLabel(parent)
 
 void SelectedFileLabel::connectFileTreeWidget(RemoteFileTree * connectedTree)
 {
-    if (myFileTree != NULL)
+    if (myFileTree != nullptr)
     {
-        QObject::disconnect(myFileTree, 0, this, 0);
+        QObject::disconnect(myFileTree, nullptr, this, nullptr);
     }
     myFileTree = connectedTree;
-    if (myFileTree == NULL)
+    if (myFileTree == nullptr)
     {
         newSelectedItem(FileNodeRef::nil());
         return;

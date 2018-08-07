@@ -50,7 +50,7 @@ class FooterWidget : public QFrame
 {
     Q_OBJECT
 public:
-    explicit FooterWidget(QWidget *parent = 0);
+    explicit FooterWidget(QWidget *parent = nullptr);
     ~FooterWidget();
     void condense();
 

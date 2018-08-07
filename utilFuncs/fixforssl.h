@@ -21,7 +21,7 @@ class FixForSSL : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit FixForSSL(QWidget *parent = 0);
+    explicit FixForSSL(QWidget *parent = nullptr);
     ~FixForSSL();
 
     static bool performSSLcheck();

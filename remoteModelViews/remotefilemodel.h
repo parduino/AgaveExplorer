@@ -78,7 +78,7 @@ private:
     void updateItemList(QList<RemoteFileItem *> theList, FileNodeRef newFileInfo);
 
     QStandardItemModel theModel;
-    RemoteFileItem * userRoot = NULL;
+    RemoteFileItem * userRoot = nullptr;
 
     //const int tableNumCols = 7;
     //const QStringList shownHeaderLabelList = {"File Name","Type","Size","Last Changed",

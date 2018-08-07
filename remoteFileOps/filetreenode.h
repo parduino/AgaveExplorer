@@ -63,8 +63,8 @@ class FileTreeNode : public QObject
 {
     Q_OBJECT
 public:
-    FileTreeNode(FileMetaData contents, FileTreeNode * parent = NULL);
-    FileTreeNode(QString rootFolderName, QObject * parent = NULL); //This creates the default root folder
+    FileTreeNode(FileMetaData contents, FileTreeNode * parent = nullptr);
+    FileTreeNode(QString rootFolderName, QObject * parent = nullptr); //This creates the default root folder
     ~FileTreeNode();
 
     bool isRootNode();
@@ -115,15 +115,15 @@ private:
     void insertFile(FileMetaData *newData);
     void purgeUnmatchedChildren(QList<FileMetaData> * newChildList);
 
-    FileTreeNode * myParent = NULL;
+    FileTreeNode * myParent = nullptr;
 
     FileNodeRef fileData;
     QList<FileTreeNode *> childList;
 
-    QByteArray * fileDataBuffer = NULL;
+    QByteArray * fileDataBuffer = nullptr;
 
-    RemoteDataReply * lsTask = NULL;
-    RemoteDataReply * bufferTask = NULL;
+    RemoteDataReply * lsTask = nullptr;
+    RemoteDataReply * bufferTask = nullptr;
 
     bool nodeVisible = false;
     bool folderContentsKnown = false;

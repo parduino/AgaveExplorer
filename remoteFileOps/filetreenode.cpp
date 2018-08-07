@@ -44,7 +44,7 @@
 #include "../AgaveClientInterface/remotedatainterface.h"
 #include "../ae_globals.h"
 
-FileTreeNode::FileTreeNode(FileMetaData contents, FileTreeNode * parent):QObject((QObject *)parent)
+FileTreeNode::FileTreeNode(FileMetaData contents, FileTreeNode * parent):QObject(qobject_cast<QObject *>(parent))
 {
     fileData.copyDataFrom(contents);
     settimestamps();
@@ -55,7 +55,7 @@ FileTreeNode::FileTreeNode(FileMetaData contents, FileTreeNode * parent):QObject
     recomputeNodeState();
 }
 
-FileTreeNode::FileTreeNode(QString rootFolderName, QObject * parent):QObject((QObject *)parent)
+FileTreeNode::FileTreeNode(QString rootFolderName, QObject * parent):QObject(qobject_cast<QObject *>(parent))
 {
     QString fullPath = "/";
     fullPath = fullPath.append(rootFolderName);
@@ -78,12 +78,12 @@ FileTreeNode::~FileTreeNode()
         FileTreeNode * toDelete = this->childList.takeLast();
         delete toDelete;
     }
-    if (this->fileDataBuffer != NULL)
+    if (this->fileDataBuffer != nullptr)
     {
         delete this->fileDataBuffer;
     }
 
-    if (myParent != NULL)
+    if (myParent != nullptr)
     {
         if (myParent->childList.contains(this))
         {
@@ -94,7 +94,7 @@ FileTreeNode::~FileTreeNode()
 
 bool FileTreeNode::isRootNode()
 {
-    return (myParent == NULL);
+    return (myParent == nullptr);
 }
 
 NodeState FileTreeNode::getNodeState()
@@ -142,17 +142,17 @@ void FileTreeNode::deleteFolderContentsData()
 
 void FileTreeNode::setFileBuffer(const QByteArray * newFileBuffer)
 {
-    if (fileDataBuffer == NULL)
+    if (fileDataBuffer == nullptr)
     {
-        if (newFileBuffer != NULL)
+        if (newFileBuffer != nullptr)
         {
             fileDataBuffer = new QByteArray(*newFileBuffer);
         }
     }
-    else if (newFileBuffer == NULL)
+    else if (newFileBuffer == nullptr)
     {
         delete fileDataBuffer;
-        fileDataBuffer = NULL;
+        fileDataBuffer = nullptr;
     }
     else
     {
@@ -166,7 +166,7 @@ void FileTreeNode::setFileBuffer(const QByteArray * newFileBuffer)
 
 bool FileTreeNode::haveLStask()
 {
-    return (lsTask != NULL);
+    return (lsTask != nullptr);
 }
 
 void FileTreeNode::setLStask(RemoteDataReply * newTask)
@@ -176,9 +176,9 @@ void FileTreeNode::setLStask(RemoteDataReply * newTask)
         qCDebug(agaveAppLayer, "ERROR: LS called on file rather than folder.");
         return;
     }
-    if (lsTask != NULL)
+    if (lsTask != nullptr)
     {
-        QObject::disconnect(lsTask, 0, this, 0);
+        QObject::disconnect(lsTask, nullptr, this, nullptr);
     }
     lsTask = newTask;
     QObject::connect(lsTask, SIGNAL(haveLSReply(RequestState,QList<FileMetaData>)),
@@ -188,7 +188,7 @@ void FileTreeNode::setLStask(RemoteDataReply * newTask)
 
 bool FileTreeNode::haveBuffTask()
 {
-    return (bufferTask != NULL);
+    return (bufferTask != nullptr);
 }
 
 void FileTreeNode::setBuffTask(RemoteDataReply * newTask)
@@ -198,9 +198,9 @@ void FileTreeNode::setBuffTask(RemoteDataReply * newTask)
         qCDebug(agaveAppLayer, "ERROR: Buffer download called on folder.");
         return;
     }
-    if (bufferTask != NULL)
+    if (bufferTask != nullptr)
     {
-        QObject::disconnect(bufferTask, 0, this, 0);
+        QObject::disconnect(bufferTask, nullptr, this, nullptr);
     }
     bufferTask = newTask;
     QObject::connect(bufferTask, SIGNAL(haveBufferDownloadReply(RequestState,QByteArray)),
@@ -223,7 +223,7 @@ FileTreeNode * FileTreeNode::getChildNodeWithName(QString filename)
             return (*itr);
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 bool FileTreeNode::isFolder()
@@ -241,9 +241,9 @@ bool FileTreeNode::isChildOf(FileTreeNode * possibleParent)
     //Note: In this method, a node is considered a child of itself
     FileTreeNode * nodeToCheck = this;
 
-    if (possibleParent == NULL) return false;
+    if (possibleParent == nullptr) return false;
 
-    while (nodeToCheck != NULL)
+    while (nodeToCheck != nullptr)
     {
         if (nodeToCheck == possibleParent) return true;
         if (nodeToCheck->isRootNode()) return false;
@@ -254,7 +254,7 @@ bool FileTreeNode::isChildOf(FileTreeNode * possibleParent)
 
 void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dataList)
 {
-    lsTask = NULL;
+    lsTask = nullptr;
     if (taskState == RequestState::GOOD)
     {
         if (verifyControlNode(&dataList) == false)
@@ -277,7 +277,7 @@ void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dat
     }
     else
     {
-        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignDafe.", "Connection Issue");
+        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignSafe.", "Connection Issue");
     }
 
     recomputeNodeState();
@@ -285,13 +285,13 @@ void FileTreeNode::deliverLSdata(RequestState taskState, QList<FileMetaData> dat
 
 void FileTreeNode::deliverBuffData(RequestState taskState, QByteArray bufferData)
 {
-    bufferTask = NULL;
+    bufferTask = nullptr;
     if (taskState == RequestState::GOOD)
     {
         qCDebug(agaveAppLayer, "Download of buffer complete: %s", qPrintable(fileData.getFullPath()));
         if (bufferData.isNull())
         {
-            setFileBuffer(NULL);
+            setFileBuffer(nullptr);
         }
         else
         {
@@ -310,7 +310,7 @@ void FileTreeNode::deliverBuffData(RequestState taskState, QByteArray bufferData
     }
     else
     {
-        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignDafe.", "Connection Issue");
+        ae_globals::displayPopup("Unable to connect to DesignSafe file server. If this problem persists, please contact DesignSafe.", "Connection Issue");
     }
     recomputeNodeState();
 }
@@ -327,7 +327,7 @@ void FileTreeNode::setNodeVisible()
     nodeVisible = true;
 
     FileTreeNode * searchNode = getParentNode();
-    if (searchNode != NULL)
+    if (searchNode != nullptr)
     {
         searchNode->setNodeVisible();
     }
@@ -385,7 +385,7 @@ void FileTreeNode::recomputeNodeState()
 
         if (haveBuffTask())
         {
-            if (fileDataBuffer != NULL)
+            if (fileDataBuffer != nullptr)
             {
                 changeNodeState(NodeState::FILE_BUFF_RELOADING); return;
             }
@@ -394,7 +394,7 @@ void FileTreeNode::recomputeNodeState()
         }
         else
         {
-            if (fileDataBuffer == NULL)
+            if (fileDataBuffer == nullptr)
             {
                 changeNodeState(NodeState::FILE_KNOWN); return;
             }
@@ -427,16 +427,16 @@ void FileTreeNode::settimestamps()
 FileTreeNode * FileTreeNode::pathSearchHelper(QString filename, bool stopEarly)
 {//I am worried about how generic this function is.
     //Our current agave setup has a named root folder
-    if (isRootNode() == false) return NULL;
+    if (isRootNode() == false) return nullptr;
 
     QStringList filePathParts = FileMetaData::getPathNameList(filename);
-    if (filePathParts.isEmpty()) return NULL;
+    if (filePathParts.isEmpty()) return nullptr;
     FileTreeNode * searchNode = this;
 
     QString rootName = filePathParts.takeFirst();
     if (rootName != searchNode->getFileData().getFileName())
     {
-        return NULL;
+        return nullptr;
     }
 
     return searchNode->pathSearchHelperFromAnyNode(filePathParts, stopEarly);
@@ -449,13 +449,13 @@ FileTreeNode * FileTreeNode::pathSearchHelperFromAnyNode(QStringList filePathPar
     for (auto itr = filePathParts.cbegin(); itr != filePathParts.cend(); itr++)
     {
         FileTreeNode * nextNode = searchNode->getChildNodeWithName(*itr);
-        if (nextNode == NULL)
+        if (nextNode == nullptr)
         {
             if (stopEarly == true)
             {
                 return searchNode;
             }
-            return NULL;
+            return nullptr;
         }
         searchNode = nextNode;
     }
@@ -469,7 +469,7 @@ bool FileTreeNode::verifyControlNode(QList<FileMetaData> * newDataList)
     if (controllerAddress.isEmpty()) return false;
 
     FileTreeNode * myRootNode = this;
-    while (myRootNode->myParent != NULL)
+    while (myRootNode->myParent != nullptr)
     {
         myRootNode = myRootNode->myParent;
     }
