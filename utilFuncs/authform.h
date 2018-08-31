@@ -40,7 +40,7 @@
 
 enum class RequestState;
 class AgaveSetupDriver;
-class RemoteDataThread;
+class RemoteDataInterface;
 
 namespace Ui {
 class AuthForm;
@@ -51,7 +51,7 @@ class AuthForm : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit AuthForm(AgaveSetupDriver * theDriver, QWidget *parent = nullptr);
+    explicit AuthForm(QWidget *parent = nullptr);
     ~AuthForm();
 
 private slots:
@@ -62,10 +62,6 @@ private slots:
 
 private:
     Ui::AuthForm *ui;
-    RemoteDataThread * theConnection;
-    AgaveSetupDriver * myDriver;
-
-    bool authInProgress = false;
 };
 
 #endif // AUTHFORM_H

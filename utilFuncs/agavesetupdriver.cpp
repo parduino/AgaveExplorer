@@ -35,28 +35,20 @@
 
 #include "agavesetupdriver.h"
 
-#include "../AgaveExplorer/ae_globals.h"
-#include "../AgaveExplorer/utilFuncs/authform.h"
-#include "../AgaveExplorer/remoteFileOps/fileoperator.h"
-#include "../AgaveExplorer/remoteFileOps/joboperator.h"
+#include "ae_globals.h"
+#include "utilFuncs/authform.h"
+#include "remoteFiles/fileoperator.h"
+#include "remoteJobs/joboperator.h"
 
-#include "../AgaveClientInterface/agaveInterfaces/agavehandler.h"
+#include "agaveInterfaces/agavehandler.h"
 
 Q_LOGGING_CATEGORY(agaveAppLayer, "Agave App Layer")
 
-AgaveSetupDriver::AgaveSetupDriver(QObject *parent, bool debug) : QObject(parent)
+QStringList AgaveSetupDriver::enabledDebugs;
+
+AgaveSetupDriver::AgaveSetupDriver(QObject *parent) : QObject(parent)
 {
     ae_globals::set_Driver(this);
-
-    inDebugMode = debug;
-    if (inDebugMode)
-    {
-        QLoggingCategory::installFilter(debugCategoryFilterOn);
-    }
-    else
-    {
-        QLoggingCategory::installFilter(debugCategoryFilterOff);
-    }
 
     qRegisterMetaType<RequestState>("RequestState");
     qRegisterMetaType<FileNodeRef>("FileNodeRef");
@@ -74,54 +66,55 @@ AgaveSetupDriver::~AgaveSetupDriver()
 {
     if (authWindow != nullptr) delete authWindow;
 
-    if (myJobHandle != nullptr) delete myJobHandle;
-    if (myFileHandle != nullptr) delete myFileHandle;
+    if (theNetManager != nullptr) delete theNetManager;
+    if (myDataInterface != nullptr) delete myDataInterface;
 
-    if (theConnectThread != nullptr)
+    if (remoteInterfacesThread != nullptr)
     {
-        theConnectThread->quit();
-        theConnectThread->wait();
+        remoteInterfacesThread->quit();
+        remoteInterfacesThread->wait();
     }
 }
 
-void AgaveSetupDriver::debugCategoryFilterOn(QLoggingCategory *category)
+void AgaveSetupDriver::createAndStartAgaveThread()
 {
-    performDebugFiltering(category, true);
+    remoteInterfacesThread = new QThread(this);
+
+    remoteInterfacesThread->start();
+
+    theNetManager = new QNetworkAccessManager();
+    theNetManager->moveToThread(remoteInterfacesThread);
+
+    myDataInterface = new AgaveHandler(theNetManager);
+    myDataInterface->moveToThread(remoteInterfacesThread);
+    myDataInterface->setAgaveConnectionParams("https://agave.designsafe-ci.org", "SimCenter_CWE_GUI", "designsafe.storage.default");
 }
 
-void AgaveSetupDriver::debugCategoryFilterOff(QLoggingCategory *category)
+void AgaveSetupDriver::setDebugLogging(bool loggingEnabled)
 {
-    performDebugFiltering(category, false);
+    if (loggingEnabled)
+    {
+        enabledDebugs.append("Remote Interface");
+        enabledDebugs.append("Agave App Layer");
+        enabledDebugs.append("File Manager");
+        enabledDebugs.append("default");
+    }
+    QLoggingCategory::installFilter(debugCategoryFilter);
 }
 
-void AgaveSetupDriver::performDebugFiltering(QLoggingCategory *category, bool debugEnabled)
+void AgaveSetupDriver::debugCategoryFilter(QLoggingCategory *category)
 {
-    if (qstrcmp(category->categoryName(), "Raw HTTP") == 0)
+    if (enabledDebugs.contains(category->categoryName()))
     {
-        category->setEnabled(QtDebugMsg, false);
-        return;
-    }
-    if (qstrcmp(category->categoryName(), "Remote Interface") == 0)
-    {
-        category->setEnabled(QtDebugMsg, debugEnabled);
-        return;
-    }
-    if (qstrcmp(category->categoryName(), "Agave App Layer") == 0)
-    {
-        category->setEnabled(QtDebugMsg, debugEnabled);
-        return;
-    }
-    if (qstrcmp(category->categoryName(), "default") == 0)
-    {
-        category->setEnabled(QtDebugMsg, debugEnabled);
+        category->setEnabled(QtDebugMsg, true);
         return;
     }
     category->setEnabled(QtDebugMsg, false);
 }
 
-RemoteDataThread * AgaveSetupDriver::getDataConnection()
+RemoteDataInterface * AgaveSetupDriver::getDataConnection()
 {
-    return theConnectThread;
+    return myDataInterface;
 }
 
 JobOperator * AgaveSetupDriver::getJobHandler()
@@ -138,6 +131,8 @@ void AgaveSetupDriver::getAuthReply(RequestState authReply)
 {
     if ((authReply == RequestState::GOOD) && (authWindow != nullptr) && (authWindow->isVisible()))
     {
+        myJobHandle = new JobOperator(this);
+        myFileHandle = new FileOperator(this);
         closeAuthScreen();
     }
 }
@@ -152,29 +147,30 @@ void AgaveSetupDriver::subWindowHidden(bool nowVisible)
 
 void AgaveSetupDriver::shutdown()
 {
-    if (doingShutdown) //If shutdown already in progress
+    if (shutdownStarted) return;
+    shutdownStarted = true;
+    //TODO: Check shutdown sequence for race and state conditions. Esp. if program closed during login.
+
+    if ((myDataInterface == nullptr) || (myDataInterface->getInterfaceState() == RemoteDataInterfaceState::INIT) ||
+            (myDataInterface->getInterfaceState() == RemoteDataInterfaceState::READY) ||
+            (myDataInterface->getInterfaceState() == RemoteDataInterfaceState::DISCONNECTED))
     {
+        shutdownCallback();
         return;
     }
-    doingShutdown = true;
+
     qCDebug(agaveAppLayer, "Beginning graceful shutdown.");
-    if (theConnectThread != nullptr)
-    {
-        RemoteDataReply * revokeTask = theConnectThread->closeAllConnections();
-        if (revokeTask != nullptr)
-        {
-            QObject::connect(revokeTask, SIGNAL(connectionsClosed(RequestState)), this, SLOT(shutdownCallback()));
-            qCDebug(agaveAppLayer, "Waiting on outstanding tasks");
-            QMessageBox * waitBox = new QMessageBox(); //Note: deliberate memory leak, as program closes right after
-            waitBox->setText("Waiting for network shutdown. Click OK to force quit.");
-            waitBox->setStandardButtons(QMessageBox::Close);
-            waitBox->setDefaultButton(QMessageBox::Close);
-            QObject::connect(waitBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(shutdownCallback()));
-            waitBox->show();
-            return;
-        }
-    }
-    shutdownCallback();
+    RemoteDataReply * revokeTask = myDataInterface->closeAllConnections();
+
+    QObject::connect(revokeTask, SIGNAL(connectionsClosed(RequestState)), this, SLOT(shutdownCallback()));
+    qCDebug(agaveAppLayer, "Waiting on outstanding tasks");
+    QMessageBox * waitBox = new QMessageBox(); //Note: deliberate memory leak, as program closes right after
+    waitBox->setText("Waiting for network shutdown. Click OK to force quit.");
+    waitBox->setStandardButtons(QMessageBox::Close);
+    waitBox->setDefaultButton(QMessageBox::Close);
+    QObject::connect(waitBox, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(shutdownCallback()));
+    waitBox->show();
+    return;
 }
 
 void AgaveSetupDriver::shutdownCallback()

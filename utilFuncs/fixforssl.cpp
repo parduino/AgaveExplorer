@@ -4,7 +4,7 @@
 #include "ui_fixforssl.h"
 #endif
 
-#include "../AgaveExplorer/ae_globals.h"
+#include "ae_globals.h"
 
 bool FixForSSL::performSSLcheck()
 {

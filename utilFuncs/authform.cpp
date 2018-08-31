@@ -36,24 +36,21 @@
 #include "authform.h"
 #include "ui_authform.h"
 
-#include "../AgaveClientInterface/remotedatainterface.h"
+#include "remotedatainterface.h"
 #include "copyrightdialog.h"
 
 #include "agavesetupdriver.h"
-#include "../ae_globals.h"
+#include "ae_globals.h"
 
-AuthForm::AuthForm(AgaveSetupDriver * theDriver, QWidget *parent) :
+AuthForm::AuthForm(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::AuthForm)
 {
     ui->setupUi(this);
 
-    myDriver = theDriver;
-    theConnection = myDriver->getDataConnection();
+    QLabel * versionLabel = new QLabel(ae_globals::get_Driver()->getVersion());
 
-    QLabel * versionLabel = new QLabel(myDriver->getVersion());
-
-    ui->headerBox->setHeadingText(myDriver->getBanner());
+    ui->headerBox->setHeadingText(ae_globals::get_Driver()->getBanner());
     ui->headerBox->appendWidget(versionLabel);
 
     QPushButton * copyButton = new QPushButton("Click Here for Copyright and License");
@@ -80,17 +77,17 @@ void AuthForm::getCopyingInfo()
 
 void AuthForm::exitAuth()
 {
-    myDriver->shutdown();
+    ae_globals::get_Driver()->shutdown();
 }
 
 void AuthForm::performAuth()
 {
-    if (authInProgress) return;
+    if (ae_globals::get_connection()->getInterfaceState() == RemoteDataInterfaceState::AUTH_TRY) return;
 
     QString unameText = ui->unameInput->text();
     QString passText = ui->passwordInput->text();
 
-    RemoteDataReply * authReply = theConnection->performAuth(unameText, passText);
+    RemoteDataReply * authReply = ae_globals::get_connection()->performAuth(unameText, passText);
 
     if (authReply == nullptr)
     {
@@ -101,7 +98,7 @@ void AuthForm::performAuth()
 
     ui->instructText->setText("Connecting to DesignSafe");
     QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),this,SLOT(getAuthReply(RequestState)));
-    QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),myDriver, SLOT(getAuthReply(RequestState)));
+    QObject::connect(authReply,SIGNAL(haveAuthReply(RequestState)),ae_globals::get_Driver(), SLOT(getAuthReply(RequestState)));
     ui->loginButton->setEnabled(false);
 }
 

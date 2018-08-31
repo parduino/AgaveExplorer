@@ -247,31 +247,31 @@
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
   <customwidget>
-   <class>RemoteFileTree</class>
-   <extends>QTreeView</extends>
-   <header>remoteModelViews/remotefiletree.h</header>
-  </customwidget>
-  <customwidget>
    <class>HeaderWidget</class>
    <extends>QFrame</extends>
-   <header>../AgaveExplorer/SimCenterCommon/HeaderWidget.h</header>
+   <header>commonUI/HeaderWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>FooterWidget</class>
    <extends>QFrame</extends>
-   <header>../AgaveExplorer/SimCenterCommon/FooterWidget.h</header>
+   <header>commonUI/FooterWidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>RemoteFileTree</class>
+   <extends>QTreeView</extends>
+   <header>remoteFiles/remotefiletree.h</header>
   </customwidget>
   <customwidget>
    <class>RemoteJobLister</class>
    <extends>QTableView</extends>
-   <header>remoteModelViews/remotejoblister.h</header>
+   <header>remoteJobs/remotejoblister.h</header>
   </customwidget>
   <customwidget>
    <class>SelectedFileLabel</class>
    <extends>QLabel</extends>
-   <header>remoteModelViews/selectedfilelabel.h</header>
+   <header>remoteFiles/selectedfilelabel.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

@@ -42,6 +42,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QVariant>
+#include <QThread>
 
 class ExplorerWindow;
 
@@ -50,7 +51,7 @@ class ExplorerDriver : public AgaveSetupDriver
     Q_OBJECT
 
 public:
-    explicit ExplorerDriver(QObject *parent = nullptr, bool debug = false);
+    explicit ExplorerDriver(QObject *parent = nullptr);
     ~ExplorerDriver();
 
     virtual void startup();
@@ -66,8 +67,6 @@ private slots:
     void loadAppList(RequestState replyState, QVariantList appList);
 
 private:
-
-
     ExplorerWindow * mainWindow = nullptr;
 };
 

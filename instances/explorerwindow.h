@@ -42,8 +42,8 @@
 #include <QMenu>
 #include <QJsonDocument>
 
-#include "../AgaveExplorer/remoteFileOps/filenoderef.h"
-#include "../AgaveExplorer/remoteModelViews/remotefilemodel.h"
+#include "remoteFiles/filenoderef.h"
+#include "remoteFiles/remotefilemodel.h"
 
 class RemoteFileTree;
 class FileMetaData;

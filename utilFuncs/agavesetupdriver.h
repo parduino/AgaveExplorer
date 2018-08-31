@@ -38,12 +38,12 @@
 
 #include <QObject>
 #include <QApplication>
+#include <QNetworkAccessManager>
 
 enum class RequestState;
 
-class RemoteDataThread;
 class RemoteDataInterface;
-
+class AgaveHandler;
 class AuthForm;
 class JobOperator;
 class FileOperator;
@@ -52,25 +52,25 @@ class AgaveSetupDriver : public QObject
 {
     Q_OBJECT
 public:
-    explicit AgaveSetupDriver(QObject *parent = nullptr, bool debug = false);
+    explicit AgaveSetupDriver(QObject *parent = nullptr);
     ~AgaveSetupDriver();
     virtual void startup() = 0;
     virtual void startOffline() = 0;
+    void createAndStartAgaveThread();
 
     virtual void closeAuthScreen() = 0;
 
     virtual void loadStyleFiles() = 0;
 
-    RemoteDataThread * getDataConnection();
+    RemoteDataInterface *getDataConnection();
     JobOperator * getJobHandler();
     FileOperator * getFileHandler();
 
     virtual QString getBanner() = 0;
     virtual QString getVersion() = 0;
 
-    static void debugCategoryFilterOn(QLoggingCategory *category);
-    static void debugCategoryFilterOff(QLoggingCategory *category);
-    static void performDebugFiltering(QLoggingCategory *category, bool debugEnabled);
+    static void setDebugLogging(bool loggingEnabled);
+    static void debugCategoryFilter(QLoggingCategory *category);
 
 private slots:
     void getAuthReply(RequestState authReply);
@@ -81,14 +81,17 @@ public slots:
     void shutdown();
 
 protected:
-    RemoteDataThread * theConnectThread = nullptr;
+    QNetworkAccessManager * theNetManager = nullptr;
+    QThread * remoteInterfacesThread = nullptr;
 
     AuthForm * authWindow = nullptr;
+
+    AgaveHandler * myDataInterface = nullptr;
     JobOperator * myJobHandle = nullptr;
     FileOperator * myFileHandle = nullptr;
 
-    bool doingShutdown = false;
-    bool inDebugMode;
+    static QStringList enabledDebugs;
+    bool shutdownStarted = false;
 };
 
 #endif // AGAVESETUPDRIVER_H

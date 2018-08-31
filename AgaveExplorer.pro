@@ -36,42 +36,17 @@
 QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+include(AgaveExplorer.pri)
+
 CONFIG += c++11
 
 TARGET = AgaveExplorer
 TEMPLATE = app
 
-SOURCES += main.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavehandler.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavetaskguide.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavetaskreply.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavepipebuffer.cpp \
-    ../AgaveClientInterface/remotedatainterface.cpp \
-    ../AgaveClientInterface/filemetadata.cpp \
-    ../AgaveClientInterface/remotejobdata.cpp \
-    remoteFileOps/easyboollock.cpp \
-    remoteFileOps/fileoperator.cpp \
-    remoteFileOps/filetreenode.cpp \
-    remoteFileOps/joboperator.cpp \
+SOURCES += \
+    main.cpp \
     instances/explorerdriver.cpp \
-    instances/explorerwindow.cpp \
-    SimCenterCommon/FooterWidget.cpp \
-    SimCenterCommon/HeaderWidget.cpp \
-    utilFuncs/agavesetupdriver.cpp \
-    utilFuncs/authform.cpp \
-    utilFuncs/copyrightdialog.cpp \
-    utilFuncs/singlelinedialog.cpp \
-    remoteFileOps/joblistnode.cpp \
-    ae_globals.cpp \
-    remoteFileOps/filenoderef.cpp \
-    remoteModelViews/linkedstandarditem.cpp \
-    remoteModelViews/remotefilemodel.cpp \
-    remoteModelViews/remotefiletree.cpp \
-    remoteModelViews/remotejoblister.cpp \
-    remoteModelViews/selectedfilelabel.cpp \
-    remoteModelViews/remotefileitem.cpp \
-    ../AgaveClientInterface/agaveInterfaces/agavethread.cpp \
-    utilFuncs/fixforssl.cpp
+    instances/explorerwindow.cpp
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -85,47 +60,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 HEADERS += \
-    ../AgaveClientInterface/agaveInterfaces/agavehandler.h \
-    ../AgaveClientInterface/agaveInterfaces/agavetaskguide.h \
-    ../AgaveClientInterface/agaveInterfaces/agavetaskreply.h \
-    ../AgaveClientInterface/remotedatainterface.h \
-    ../AgaveClientInterface/filemetadata.h \
-    ../AgaveClientInterface/remotejobdata.h \
-    remoteFileOps/easyboollock.h \
-    remoteFileOps/fileoperator.h \
-    remoteFileOps/filetreenode.h \
-    remoteFileOps/joboperator.h \
     instances/explorerdriver.h \
     instances/explorerwindow.h \
-    SimCenterCommon/FooterWidget.h \
-    SimCenterCommon/HeaderWidget.h \
-    utilFuncs/agavesetupdriver.h \
-    utilFuncs/authform.h \
-    utilFuncs/copyrightdialog.h \
-    utilFuncs/singlelinedialog.h \
-    ../AgaveClientInterface/agaveInterfaces/agavepipebuffer.h \
-    remoteFileOps/joblistnode.h \
-    ae_globals.h \
-    remoteFileOps/filenoderef.h \
-    remoteModelViews/linkedstandarditem.h \
-    remoteModelViews/remotefilemodel.h \
-    remoteModelViews/remotefiletree.h \
-    remoteModelViews/remotejoblister.h \
-    remoteModelViews/selectedfilelabel.h \
-    remoteModelViews/remotefileitem.h \
-    ../AgaveClientInterface/agaveInterfaces/agavethread.h \
-    utilFuncs/fixforssl.h
+
 FORMS += \
     instances/explorerwindow.ui \
-    utilFuncs/authform.ui \
-    utilFuncs/copyrightdialog.ui \
-    utilFuncs/singlelinedialog.ui
-
-win32 {
-FORMS += \
-    utilFuncs/fixforssl.ui
-}
 
 RESOURCES += \
-    SimCenterCommon/commonResources.qrc \
     instances/explorerfiles.qrc
