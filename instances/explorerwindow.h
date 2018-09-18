@@ -43,6 +43,7 @@
 #include <QJsonDocument>
 
 #include "remoteFiles/filenoderef.h"
+#include "remotejobdata.h"
 #include "remoteFiles/remotefilemodel.h"
 
 class RemoteFileTree;
@@ -97,11 +98,14 @@ private slots:
 
     void jobRightClickMenu(QPoint);
 
+    void demandJobRefresh();
+    void deleteJobDataEntry();
+
 private:
     Ui::ExplorerWindow *ui;
 
     FileNodeRef targetNode;
-    RemoteFileModel theFileModel;
+    RemoteJobData targetJob;
 
     QStandardItemModel taskListModel;
     QString selectedAgaveApp;

@@ -70,10 +70,6 @@ void ExplorerDriver::startup()
 void ExplorerDriver::closeAuthScreen()
 {
     mainWindow = new ExplorerWindow();
-
-    myJobHandle->demandJobDataRefresh();
-    myFileHandle->resetFileData(myDataInterface, myDataInterface->getUserName());
-
     mainWindow->startAndShow();
 
     //The dynamics of this may be different in windows. TODO: Find a more cross-platform solution

@@ -64,7 +64,7 @@ public:
     static AgaveSetupDriver * get_Driver();
     static void set_Driver(AgaveSetupDriver * newDriver);
 
-    static RemoteDataInterface *get_connection();
+    static RemoteDataInterface * get_connection();
     static JobOperator * get_job_handle();
     static FileOperator * get_file_handle();
 

@@ -82,7 +82,7 @@ void AuthForm::exitAuth()
 
 void AuthForm::performAuth()
 {
-    if (ae_globals::get_connection()->getInterfaceState() == RemoteDataInterfaceState::AUTH_TRY) return;
+    if (ae_globals::get_connection()->getInterfaceState() != RemoteDataInterfaceState::READY_TO_AUTH) return;
 
     QString unameText = ui->unameInput->text();
     QString passText = ui->passwordInput->text();

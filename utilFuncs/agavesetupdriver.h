@@ -39,8 +39,10 @@
 #include <QObject>
 #include <QApplication>
 #include <QNetworkAccessManager>
+#include <QLoggingCategory>
 
 enum class RequestState;
+enum class RemoteDataInterfaceState;
 
 class RemoteDataInterface;
 class AgaveHandler;
@@ -75,6 +77,7 @@ public:
 private slots:
     void getAuthReply(RequestState authReply);
     void subWindowHidden(bool nowVisible);
+    void newConnectionState(RemoteDataInterfaceState newState);
     void shutdownCallback();
 
 public slots:

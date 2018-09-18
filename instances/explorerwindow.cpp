@@ -65,9 +65,8 @@ ExplorerWindow::ExplorerWindow(QWidget *parent) :
     }
     ui->agaveAppList->setModel(&taskListModel);
 
-    QObject::connect(ae_globals::get_file_handle(), SIGNAL(fileSystemChange(FileNodeRef)),
-                     &theFileModel, SLOT(newFileData(FileNodeRef)), Qt::QueuedConnection);
-    ui->remoteFileView->setModelLink(&theFileModel);
+    ui->remoteFileView->setModelLink(ae_globals::get_file_handle());
+    ui->jobTable->setOperator(ae_globals::get_job_handle());
 
     ui->selectedFileLabel->connectFileTreeWidget(ui->remoteFileView);
     ui->selectedFileInfo->connectFileTreeWidget(ui->remoteFileView);
@@ -384,7 +383,7 @@ void ExplorerWindow::refreshMenuItem()
     targetNode.enactFolderRefresh();
 }
 
-void ExplorerWindow::jobRightClickMenu(QPoint)
+void ExplorerWindow::jobRightClickMenu(QPoint pos)
 {
     if (ae_globals::get_job_handle() == nullptr)
     {
@@ -392,6 +391,43 @@ void ExplorerWindow::jobRightClickMenu(QPoint)
     }
     QMenu jobMenu;
 
-    jobMenu.addAction("Refresh Job Info", ae_globals::get_job_handle(), SLOT(demandJobDataRefresh()));
+    if (ae_globals::get_job_handle()->currentlyPerformingJobOperation())
+    {
+        jobMenu.addAction("Currently Performing Job Operation . . .");
+        jobMenu.exec(QCursor::pos());
+        return;
+    }
+
+    if (ae_globals::get_job_handle()->currentlyRefreshingJobs())
+    {
+        jobMenu.addAction("Currently Refreshing Job Info . . .");
+        jobMenu.exec(QCursor::pos());
+        return;
+    }
+
+    jobMenu.addAction("Refresh Job Info", this, SLOT(demandJobRefresh()));
+
+    QModelIndex targetIndex = ui->jobTable->indexAt(pos);
+    ui->jobTable->jobEntryTouched(targetIndex);
+
+    targetJob = ui->jobTable->getSelectedJob();
+
+    if (targetJob.isValidEntry())
+    {
+        jobMenu.addAction("Delete This Job Entry", this, SLOT(deleteJobDataEntry()));
+    }
+
     jobMenu.exec(QCursor::pos());
+}
+
+void ExplorerWindow::demandJobRefresh()
+{
+    if (ae_globals::get_job_handle()->currentlyRefreshingJobs()) return;
+    ae_globals::get_job_handle()->demandJobDataRefresh();
+}
+
+void ExplorerWindow::deleteJobDataEntry()
+{
+    if (ae_globals::get_job_handle()->currentlyPerformingJobOperation()) return;
+    ae_globals::get_job_handle()->deleteJobDataEntry(&targetJob);
 }
