@@ -54,10 +54,9 @@ class AgaveSetupDriver : public QObject
 {
     Q_OBJECT
 public:
-    explicit AgaveSetupDriver(QObject *parent = nullptr);
+    explicit AgaveSetupDriver(int argc, char *argv[], QObject *parent = nullptr);
     ~AgaveSetupDriver();
     virtual void startup() = 0;
-    virtual void startOffline() = 0;
     void createAndStartAgaveThread();
 
     virtual void closeAuthScreen() = 0;
@@ -73,6 +72,8 @@ public:
 
     static void setDebugLogging(bool loggingEnabled);
     static void debugCategoryFilter(QLoggingCategory *category);
+
+    static bool sslCheckOkay();
 
 private slots:
     void getAuthReply(RequestState authReply);
@@ -95,6 +96,8 @@ protected:
 
     static QStringList enabledDebugs;
     bool shutdownStarted = false;
+    bool debugLoggingEnabled = false;
+    bool offlineMode = false;
 };
 
 #endif // AGAVESETUPDRIVER_H

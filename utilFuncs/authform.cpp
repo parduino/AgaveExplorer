@@ -92,7 +92,6 @@ void AuthForm::performAuth()
     if (authReply == nullptr)
     {
         ae_globals::displayFatalPopup("Unable to connect to DesignSafe. Please check internet connection.");
-        return;
     }
     this->setCursor(QCursor(Qt::WaitCursor));
 

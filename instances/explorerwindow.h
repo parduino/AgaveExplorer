@@ -44,7 +44,6 @@
 
 #include "remoteFiles/filenoderef.h"
 #include "remotejobdata.h"
-#include "remoteFiles/remotefilemodel.h"
 
 class RemoteFileTree;
 class FileMetaData;
@@ -92,8 +91,6 @@ private slots:
     void downloadMenuItem();
     void readMenuItem();
     void retriveMenuItem();
-    void compressMenuItem();
-    void decompressMenuItem();
     void refreshMenuItem();
 
     void jobRightClickMenu(QPoint);

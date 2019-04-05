@@ -46,16 +46,28 @@ class RemoteDataInterface;
 class FileOperator;
 class JobOperator;
 
+/*! \brief The ae_globals are a set of static methods, intended as global functions for AgaveExplorer programs.
+ *
+ *  These utility functions include error popups, folder name parsing, and locating key objects of the AgaveExplorer Program.
+ */
+
 class ae_globals
 {
 public:
+    /*! \brief ae_globals is a static class. The constructor should never be used.
+     */
     ae_globals();
 
-    static void displayFatalPopup(QString message, QString header);
-    static void displayFatalPopup(QString message);
+    /*! \brief This will display an informational popup and kill the program.
+     *
+     *  \param message This is the content of the message displayed in the popup.
+     *  \param header This short text appears in the header of the popup. The default is: "Critical Error"
+     *
+     *  After construction, use show() or exec() to display the window.
+     */
+    [[ noreturn ]] static void displayFatalPopup(QString message, QString header = "Critical Error");
 
-    static void displayPopup(QString message, QString header);
-    static void displayPopup(QString message);
+    static void displayPopup(QString message, QString header = "Error");
 
     static bool isValidFolderName(QString folderName);
     static bool isValidLocalFolder(QString folderName);

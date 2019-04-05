@@ -41,7 +41,7 @@
 
 #include "remoteFiles/filetreenode.h"
 #include "remoteFiles/fileoperator.h"
-#include "remoteFiles/remotefilemodel.h"
+#include "remoteFiles/filerecursiveoperator.h"
 
 #include "remoteJobs/joboperator.h"
 
@@ -65,7 +65,7 @@ ExplorerWindow::ExplorerWindow(QWidget *parent) :
     }
     ui->agaveAppList->setModel(&taskListModel);
 
-    ui->remoteFileView->setModelLink(ae_globals::get_file_handle());
+    ui->remoteFileView->linkToFileOperator(ae_globals::get_file_handle());
     ui->jobTable->setOperator(ae_globals::get_job_handle());
 
     ui->selectedFileLabel->connectFileTreeWidget(ui->remoteFileView);
@@ -239,14 +239,6 @@ void ExplorerWindow::customFileMenu(QPoint pos)
             fileMenu.addAction("Retrive File",this, SLOT(retriveMenuItem()));
         }
     }
-    if ((targetNode.getFileType() == FileType::DIR) && (!targetNode.isRootNode()))
-    {
-        fileMenu.addAction("Compress Folder",this, SLOT(compressMenuItem()));
-    }
-    else if (targetNode.getFileType() == FileType::FILE)
-    {
-        fileMenu.addAction("De-Compress File",this, SLOT(decompressMenuItem()));
-    }
 
     if ((targetNode.getFileType() == FileType::DIR) || (targetNode.getFileType() == FileType::FILE))
     {
@@ -320,7 +312,7 @@ void ExplorerWindow::uploadFolderMenuItem()
     {
         return;
     }
-    ae_globals::get_Driver()->getFileHandler()->enactRecursiveUpload(targetNode, uploadNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->getRecursiveOp()->enactRecursiveUpload(targetNode, uploadNamePopup.getInputText());
 }
 
 void ExplorerWindow::downloadFolderMenuItem()
@@ -331,7 +323,7 @@ void ExplorerWindow::downloadFolderMenuItem()
     {
         return;
     }
-    ae_globals::get_Driver()->getFileHandler()->enactRecursiveDownload(targetNode, downloadNamePopup.getInputText());
+    ae_globals::get_Driver()->getFileHandler()->getRecursiveOp()->enactRecursiveDownload(targetNode, downloadNamePopup.getInputText());
 }
 
 void ExplorerWindow::createFolderMenuItem()
@@ -366,16 +358,6 @@ void ExplorerWindow::readMenuItem()
 void ExplorerWindow::retriveMenuItem()
 {
     ae_globals::get_Driver()->getFileHandler()->sendDownloadBuffReq(targetNode);
-}
-
-void ExplorerWindow::compressMenuItem()
-{
-    ae_globals::get_Driver()->getFileHandler()->sendCompressReq(targetNode);
-}
-
-void ExplorerWindow::decompressMenuItem()
-{
-    ae_globals::get_Driver()->getFileHandler()->sendDecompressReq(targetNode);
 }
 
 void ExplorerWindow::refreshMenuItem()

@@ -43,11 +43,21 @@ namespace Ui {
 class CopyrightDialog;
 }
 
+/*! \brief The CopyrightDialog is a window displaying copyright and license info.
+ *
+ *  This simple class contains a text panel to display the information, and a button to close the window. It is a subclass of QDialog and will get its text from ":/copyText.txt". Once created, the object should be shown with exec() or show().
+ */
 class CopyrightDialog : public QDialog
 {
     Q_OBJECT
 
 public:
+    /*! \brief The CopyrightDialog will retrive and load the copyright text.
+     *
+     *  \param parent As a window, this object usually will not have a parent.
+     *
+     *  After construction, use show() or exec() to display the window.
+     */
     explicit CopyrightDialog(QWidget *parent = nullptr);
     ~CopyrightDialog();
 

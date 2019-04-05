@@ -40,28 +40,12 @@
 #include "instances/explorerdriver.h"
 #include "remotedatainterface.h"
 #include "ae_globals.h"
-#include "utilFuncs/fixforssl.h"
 
 int main(int argc, char *argv[])
 {
     QApplication mainRunLoop(argc, argv);
 
-    if (!FixForSSL::performSSLcheck())
-    {
-        return mainRunLoop.exec();
-    }
-
-    bool debugLoggingEnabled = false;
-    for (int i = 0; i < argc; i++)
-    {
-        if (strcmp(argv[i],"enableDebugLogging") == 0)
-        {
-            debugLoggingEnabled = true;
-        }
-    }
-
-    ExplorerDriver::setDebugLogging(debugLoggingEnabled);
-    ExplorerDriver programDriver(nullptr);
+    ExplorerDriver programDriver(argc, argv, nullptr);
     programDriver.loadStyleFiles();
     programDriver.startup();
 

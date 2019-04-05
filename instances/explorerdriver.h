@@ -46,17 +46,30 @@
 
 class ExplorerWindow;
 
+/*! \brief The ExplorerDriver is the AgaveExplorer's subclass of the AgaveSetupDriver.
+ *
+ *  This class is the main contoller object for the other items in the AgaveExplorer. The AgaveExplorer program consists of creating an ExplorerDriver, running loadStyleFiles(), and then calling startup() before starting the Qt loop.
+ *
+ *  The Explorer driver is responsible to creating and removing subordinate program objects, most prominantly, the login and main windows. There should be only one driver object for the program.
+ */
 class ExplorerDriver : public AgaveSetupDriver
 {
     Q_OBJECT
 
 public:
-    explicit ExplorerDriver(QObject *parent = nullptr);
+    /*! \brief Constructed a new ExplorerDriver with given command-line parameters.
+     *
+     *  @param argc should be the argc from main()
+     *  @param argv should be the argv from main()
+     *  @param parent Typlically, the main driver object should not have a parent.
+     *
+     *  The constructor for the driver object should be called in main(). There should be only one driver.
+     */
+    explicit ExplorerDriver(int argc, char *argv[], QObject *parent = nullptr);
     ~ExplorerDriver();
 
     virtual void startup();
     virtual void closeAuthScreen();
-    virtual void startOffline();
 
     virtual void loadStyleFiles();
 

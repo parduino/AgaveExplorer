@@ -15,7 +15,6 @@ SOURCES += \
     $$PWD/utilFuncs/authform.cpp \
     $$PWD/utilFuncs/copyrightdialog.cpp \
     $$PWD/utilFuncs/singlelinedialog.cpp \
-    $$PWD/utilFuncs/fixforssl.cpp \
     $$PWD/ae_globals.cpp \   
     $$PWD/commonUI/FooterWidget.cpp \
     $$PWD/commonUI/HeaderWidget.cpp
@@ -25,7 +24,6 @@ HEADERS += \
     $$PWD/utilFuncs/authform.h \
     $$PWD/utilFuncs/copyrightdialog.h \
     $$PWD/utilFuncs/singlelinedialog.h \
-    $$PWD/utilFuncs/fixforssl.h \
     $$PWD/ae_globals.h \
     $$PWD/commonUI/FooterWidget.h \
     $$PWD/commonUI/HeaderWidget.h
@@ -34,11 +32,6 @@ FORMS += \
     $$PWD/utilFuncs/authform.ui \
     $$PWD/utilFuncs/copyrightdialog.ui \
     $$PWD/utilFuncs/singlelinedialog.ui
-
-win32 {
-FORMS += \
-    $$PWD/utilFuncs/fixforssl.ui
-}
 
 RESOURCES += \
     $$PWD/commonUI/commonResources.qrc \

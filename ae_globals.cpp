@@ -54,11 +54,6 @@ void ae_globals::displayFatalPopup(QString message, QString header)
     qFatal("%s", qPrintable(message));
 }
 
-void ae_globals::displayFatalPopup(QString message)
-{
-    displayFatalPopup(message, "Critical Error");
-}
-
 void ae_globals::displayPopup(QString message, QString header)
 {
     QMessageBox infoMessage;
@@ -66,11 +61,6 @@ void ae_globals::displayPopup(QString message, QString header)
     infoMessage.setText(message);
     infoMessage.setIcon(QMessageBox::Information);
     infoMessage.exec();
-}
-
-void ae_globals::displayPopup(QString message)
-{
-    displayPopup(message, "Error");
 }
 
 bool ae_globals::isValidFolderName(QString folderName)
@@ -133,7 +123,6 @@ void ae_globals::set_Driver(AgaveSetupDriver * newDriver)
     if (theDriver != nullptr)
     {
         displayFatalPopup("Program Driver object has multiple definitions. Please note the circumstances of this error and report it to the developers.", "Internal Error");
-        return;
     }
     theDriver = newDriver;
 }

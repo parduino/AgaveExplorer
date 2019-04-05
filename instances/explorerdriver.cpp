@@ -45,7 +45,7 @@
 
 #include "ae_globals.h"
 
-ExplorerDriver::ExplorerDriver(QObject *parent) : AgaveSetupDriver(parent) {}
+ExplorerDriver::ExplorerDriver(int argc, char *argv[], QObject *parent) : AgaveSetupDriver(argc, argv, parent) {}
 
 ExplorerDriver::~ExplorerDriver()
 {
@@ -86,12 +86,6 @@ void ExplorerDriver::closeAuthScreen()
     AgaveTaskReply * agaveList = myDataInterface->getAgaveAppList();
 
     QObject::connect(agaveList, SIGNAL(haveAgaveAppList(RequestState,QVariantList)), this, SLOT(loadAppList(RequestState,QVariantList)));
-}
-
-void ExplorerDriver::startOffline()
-{
-    //Placeholder for virtual function which this program does not use
-    return;
 }
 
 QString ExplorerDriver::getBanner()
